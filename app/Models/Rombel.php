@@ -37,4 +37,9 @@ class Rombel extends Model
     {
         return $this->belongsTo(Ptk::class, 'ptk_id');
     }
+
+    // Relasi langsung ke banyak siswa melalui tabel pivot anggota_rombels
+    public function siswas() {
+        return $this->belongsToMany(Siswa::class, 'anggota_rombels', 'rombel_id', 'peserta_didik_id');
+    }
 }

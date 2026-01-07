@@ -79,4 +79,9 @@ class Siswa extends Model
     {
         return $this->belongsTo(Pekerjaan::class, 'pekerjaan_wali_id', 'kode');
     }
+
+    public function rombels() {
+        return $this->belongsToMany(Rombel::class, 'anggota_rombels', 'peserta_didik_id', 'rombel_id');
+    }
+
 }

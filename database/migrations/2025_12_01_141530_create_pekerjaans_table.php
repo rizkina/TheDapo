@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('pekerjaans', function (Blueprint $table) {
             $table->id();
-            $table->integer('kode')->unique();
+            $table->unsignedInteger('kode')->unique();
             $table->string('nama');
             
             $table->timestamps();

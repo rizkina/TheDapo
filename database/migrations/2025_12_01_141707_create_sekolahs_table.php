@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('sekolahs', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('npsn')->unique();
+            $table->string('npsn',10)->unique();
             $table->string('nama');
             $table->text('alamat_jalan')->nullable();
             $table->string('rt')->nullable();
@@ -25,15 +25,16 @@ return new class extends Migration
             $table->string('email')->nullable();
             $table->string('website')->nullable();
             $table->boolean('is_sks')->default(false);
-            $table->decimal('lintang', 10, 7)->nullable();
-            $table->decimal('bujur', 10, 7)->nullable();
+            $table->decimal('lintang', 11, 8)->nullable();
+            $table->decimal('bujur', 11, 8)->nullable();
             $table->string('dusun')->nullable();
             $table->string('desa_kelurahan')->nullable();
             $table->string('kecamatan')->nullable();
             $table->string('kabupaten_kota')->nullable();
             $table->string('provinsi')->nullable();
-            
             $table->timestamps();
+
+            $table->index('npsn');
         });
     }
 

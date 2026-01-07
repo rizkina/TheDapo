@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('siswas', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('sekolah_id')->nullable();
+            $table->foreignUuid('sekolah_id')->nullable()->constrained('sekolahs')->nullOnDelete();
             $table->string('registrasi_id')->nullable();
             $table->integer('jenis_pendaftaran_id')->nullable();
             $table->string('jenis_pendaftaran_id_str')->nullable();
@@ -21,20 +21,20 @@ return new class extends Migration
             $table->date('tanggal_masuk_sekolah')->nullable();
             $table->string('sekolah_asal')->nullable();
             $table->string('nama');
-            $table->string('nisn')->nullable();
+            $table->string('nisn', 10)->nullable()->unique();
             $table->char('jenis_kelamin', 1)->nullable();
-            $table->string('nik')->nullable();
+            $table->string('nik', 16)->nullable()->index();
             $table->string('tempat_lahir')->nullable();
             $table->date('tanggal_lahir')->nullable();
-            $table->integer('agama_id')->nullable(); // kode dari agamas
+            $table->unsignedInteger('agama_id')->nullable(); // kode dari agamas
             $table->string('agama_id_str')->nullable();
             $table->string('nomor_telepon_rumah')->nullable();
             $table->string('nomor_telepon_seluler')->nullable();
             $table->string('nama_ayah')->nullable();
-            $table->integer('pekerjaan_ayah_id')->nullable(); // kode dari pekerjaans
+            $table->unsignedInteger('pekerjaan_ayah_id')->nullable(); // kode dari pekerjaans
             $table->string('pekerjaan_ayah_id_str')->nullable();
             $table->string('nama_ibu')->nullable();
-            $table->integer('pekerjaan_ibu_id')->nullable(); // kode dari pekerjaans
+            $table->unsignedInteger('pekerjaan_ibu_id')->nullable(); // kode dari pekerjaans
             $table->string('pekerjaan_ibu_id_str')->nullable();
             $table->string('nama_wali')->nullable();
             $table->integer('pekerjaan_wali_id')->nullable(); // kode dari pekerjaans
@@ -54,11 +54,10 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->foreign('sekolah_id')->references('id')->on('sekolahs')->onDelete('set null');
-            $table->foreign('agama_id')->references('kode')->on('agamas')->onDelete('set null');
-            $table->foreign('pekerjaan_ayah_id')->references('kode')->on('pekerjaans')->onDelete('set null');
-            $table->foreign('pekerjaan_ibu_id')->references('kode')->on('pekerjaans')->onDelete('set null');
-            $table->foreign('pekerjaan_wali_id')->references('kode')->on('pekerjaans')->onDelete('set null');
+            $table->foreign('agama_id')->references('kode')->on('agamas');
+            $table->foreign('pekerjaan_ayah_id')->references('kode')->on('pekerjaans');
+            $table->foreign('pekerjaan_ibu_id')->references('kode')->on('pekerjaans');
+            $table->foreign('pekerjaan_wali_id')->references('kode')->on('pekerjaans');
 
         });
     }

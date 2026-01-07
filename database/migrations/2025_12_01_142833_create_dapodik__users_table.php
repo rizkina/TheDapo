@@ -13,22 +13,22 @@ return new class extends Migration
     {
         Schema::create('dapodik__users', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('sekolah_id')->nullable();
+            $table->foreignUuid('sekolah_id')->nullable()->constrained('sekolahs')->nullOnDelete();
             $table->string('username')->unique();
             $table->string('nama');
             $table->string('peran_id_str');
             $table->text('alamat')->nullable();
             $table->string('no_telepon')->nullable();
             $table->string('no_hp')->nullable();
-            $table->uuid('ptk_id')->nullable();
-            $table->uuid('peserta_didik_id')->nullable();
+            $table->foreignUuid('ptk_id')->nullable()->constrained('ptks')->nullOnDelete();
+            $table->foreignUuid('peserta_didik_id')->nullable()->constrained('siswas')->nullOnDelete();
             $table->string('password')->nullable();
 
             $table->timestamps();
 
-            $table->foreign('sekolah_id')->references('id')->on('sekolahs')->onDelete('set null');
-            $table->foreign('ptk_id')->references('id')->on('ptks')->onDelete('set null');
-            $table->foreign('peserta_didik_id')->references('id')->on('siswas')->onDelete('set null');
+            // $table->foreign('sekolah_id')->references('id')->on('sekolahs')->onDelete('set null');
+            // $table->foreign('ptk_id')->references('id')->on('ptks')->onDelete('set null');
+            // $table->foreign('peserta_didik_id')->references('id')->on('siswas')->onDelete('set null');
 
         });
     }
