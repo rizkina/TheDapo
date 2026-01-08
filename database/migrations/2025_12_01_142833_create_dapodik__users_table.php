@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('dapodik__users', function (Blueprint $table) {
+        Schema::create('dapodik_users', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('sekolah_id')->nullable()->constrained('sekolahs')->nullOnDelete();
             $table->string('username')->unique();
@@ -20,9 +20,11 @@ return new class extends Migration
             $table->text('alamat')->nullable();
             $table->string('no_telepon')->nullable();
             $table->string('no_hp')->nullable();
+
             $table->foreignUuid('ptk_id')->nullable()->constrained('ptks')->nullOnDelete();
             $table->foreignUuid('peserta_didik_id')->nullable()->constrained('siswas')->nullOnDelete();
             $table->string('password')->nullable();
+            $table->rememberToken();
 
             $table->timestamps();
 

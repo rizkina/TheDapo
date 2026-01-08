@@ -13,16 +13,18 @@ return new class extends Migration
     {
         Schema::create('anggota__rombels', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('rombel_id');
-            $table->string('anggota_rombel_id');
-            $table->uuid('peserta_didik_id');
+            $table->foreignUuid('rombel_id')->nullable()->constrained('rombels')->onDelete('cascade');
+
+            $table->string('anggota_rombel_id')->nullable()->index();
+
+            $table->foreignUuid('peserta_didik_id')->nullable()->constrained('siswas')->onDelete('cascade');
             $table->integer('jenis_pendaftaran_id')->nullable();
             $table->string('jenis_pendaftaran_id_str')->nullable();
 
             $table->timestamps();
 
-            $table->foreign('rombel_id')->references('id')->on('rombels')->onDelete('cascade');
-            $table->foreign('peserta_didik_id')->references('id')->on('siswas')->onDelete('cascade');
+            // Mencegah duplikasi siswa di rombel yang sama
+            $table->unique(['rombel_id', 'peserta_didik_id'], 'unique_siswa_rombel');
 
         });
     }

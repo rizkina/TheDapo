@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('pembelajarans', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('rombel_id');
-            $table->string('pembelajaran_id');
-            $table->integer('mata_pelajaran_id');
+            $table->foreignUuid('rombel_id')->nullable()->constrained('rombels')->onDelete('cascade');
+            $table->string('pembelajaran_id')->index();
+            $table->integer('mata_pelajaran_id')->index();
             $table->string('mata_pelajaran_id_str');
             $table->string('ptk_terdaftar_id')->nullable();
-            $table->uuid('ptk_id')->nullable();
-            $table->string('nama_mata_pelajaran');
+            $table->foreignUuid('ptk_id')->nullable()->constrained('ptks')->nullOnDelete();
+            $table->string('nama_mata_pelajaran')->index();
             $table->string('induk_pembelajaran_id')->nullable();
             $table->integer('jam_mengajar_per_minggu')->nullable();
             $table->integer('status_di_kurikulum')->nullable();
@@ -27,8 +27,8 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->foreign('rombel_id')->references('id')->on('rombels')->onDelete('cascade');
-            $table->foreign('ptk_id')->references('id')->on('ptks')->onDelete('set null');
+            // Optimasi Query: Sering dicari berdasarkan kombinasi rombel dan ptk
+            $table->index(['rombel_id', 'ptk_id']);
 
         });
     }
