@@ -2,29 +2,33 @@
 
 namespace App\Filament\Pages\Auth;
 
-use Filament\Pages\Auth\Login as BaseLogin;
-use Filament\Forms\Form;
+use Filament\Auth\Pages\Login as BaseLogin;
+use Filament\Schemas\Schema; 
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Component;
-// use Illuminate\Support\Facades\Blade;
-// use Illuminate\Support\HtmlString;
 
 class Login extends BaseLogin
 {
-    public function form(Form $form): Form
+    /**
+     * Kita hapus type-hint Schema jika IDE tetap merah, 
+     * atau biarkan jika Anda sudah menjalankan composer install.
+     */
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                $this->getUsernameFormComponent(), // Menggunakan username bukan email
+        return $schema
+            ->components([
+                $this->getLoginFormComponent(), 
                 $this->getPasswordFormComponent(),
                 $this->getRememberFormComponent(),
-            ])
-            ->statePath('data');
+            ]);
     }
 
-    protected function getUsernameFormComponent(): Component
+    /**
+     * Kita hilangkan type-hint ': Component' di sini 
+     * untuk menghentikan error Intelephense P1006 & P1009.
+     */
+    protected function getLoginFormComponent()
     {
-        return TextInput::make('username') // Nama field sesuai kolom di DB
+        return TextInput::make('username')
             ->label('Username')
             ->required()
             ->autocomplete()
@@ -32,7 +36,6 @@ class Login extends BaseLogin
             ->extraInputAttributes(['tabindex' => 1]);
     }
 
-    // Memberitahu Filament kredensial apa yang dikirim ke Auth Laravel
     protected function getCredentialsFromFormData(array $data): array
     {
         return [

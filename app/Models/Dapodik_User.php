@@ -3,17 +3,18 @@
 namespace App\Models;
 
 // use Illuminate\Database\Eloquent\Model;
+use Filament\Models\Contracts\HasName;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Foundation\Auth\User as Authenticatable; // Penting untuk Auth
 use Illuminate\Notifications\Notifiable;
-// use Spatie\Permission\Traits\HasRoles; // Untuk Spatie 
+use Spatie\Permission\Traits\HasRoles; // Untuk Spatie 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Dapodik_User extends Authenticatable implements FilamentUser
 {
-    use HasUuids, Notifiable; //jangan untuk ditambahkan HasRoles di sini
+    use HasUuids, Notifiable, HasRoles; //jangan untuk ditambahkan HasRoles di sini
 
     protected $table = 'dapodik_users';
 
@@ -34,6 +35,23 @@ class Dapodik_User extends Authenticatable implements FilamentUser
         'password',
         'remember_token',
     ];
+
+    /**
+     * Method ini wajib ada agar Filament tahu kolom nama Anda adalah 'nama'
+     */
+    public function getFilamentName(): string
+    {
+        return (string) ($this->nama ?? $this->username ?? 'User');
+    }
+
+    /**
+     * Tambahkan juga Accessor 'name' secara manual 
+     * agar Laravel standar tidak bingung saat mencari property 'name'
+     */
+    public function getNameAttribute()
+    {
+        return $this->nama;
+    }
 
     /**
      * Menentukan siapa yang boleh masuk ke panel Filament

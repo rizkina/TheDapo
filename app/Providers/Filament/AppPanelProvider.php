@@ -19,6 +19,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Filament\Pages\Auth\Login;
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -55,6 +56,9 @@ class AppPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+            ])
+            ->plugins([
+                FilamentShieldPlugin::make(),
             ]);
     }
 }
