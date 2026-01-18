@@ -37,6 +37,7 @@ return new class extends Migration
             $table->string('pangkat_golongan_terakhir')->nullable();
             $table->jsonb('riwayat_pendidikan')->nullable();
             $table->jsonb('riwayat_kepangkatan')->nullable();
+            $table->softDeletes();
 
             $table->timestamps();
 

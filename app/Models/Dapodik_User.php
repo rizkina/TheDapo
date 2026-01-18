@@ -11,10 +11,11 @@ use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles; // Untuk Spatie 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Dapodik_User extends Authenticatable implements FilamentUser
 {
-    use HasUuids, Notifiable, HasRoles; //jangan untuk ditambahkan HasRoles di sini
+    use HasUuids, Notifiable, HasRoles, SoftDeletes; //jangan untuk ditambahkan HasRoles di sini
 
     protected $table = 'dapodik_users';
 

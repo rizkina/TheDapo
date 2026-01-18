@@ -20,6 +20,7 @@ return new class extends Migration
             $table->foreignUuid('peserta_didik_id')->nullable()->constrained('siswas')->onDelete('cascade');
             $table->integer('jenis_pendaftaran_id')->nullable();
             $table->string('jenis_pendaftaran_id_str')->nullable();
+            $table->softDeletes();
 
             $table->timestamps();
 

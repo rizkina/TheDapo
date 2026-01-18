@@ -56,6 +56,7 @@ return new class extends Migration
             $table->integer('kurikulum_id')->nullable();
             $table->string('kurikulum_id_str')->nullable();
             $table->string('kebutuhan_khusus')->nullable();
+            $table->softDeletes();
 
             $table->timestamps();
 

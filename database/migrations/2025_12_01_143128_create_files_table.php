@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('mime_type');
             $table->integer('size');
             $table->string('disk')->default('public');
+            $table->softDeletes();
 
             $table->timestamps();
 

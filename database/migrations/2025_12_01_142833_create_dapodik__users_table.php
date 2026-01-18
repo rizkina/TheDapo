@@ -25,6 +25,7 @@ return new class extends Migration
             $table->foreignUuid('peserta_didik_id')->nullable()->constrained('siswas')->nullOnDelete();
             $table->string('password')->nullable();
             $table->rememberToken();
+            $table->softDeletes();
 
             $table->timestamps();
 

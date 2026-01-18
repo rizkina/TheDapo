@@ -33,6 +33,7 @@ return new class extends Migration
             $table->string('kabupaten_kota')->nullable();
             $table->string('provinsi')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index('npsn');
         });

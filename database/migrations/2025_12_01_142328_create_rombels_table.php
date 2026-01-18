@@ -29,6 +29,7 @@ return new class extends Migration
             $table->string('ptk_id_str')->nullable();
             $table->string('jurusan_id')->nullable();
             $table->string('jurusan_id_str')->nullable();
+            $table->softDeletes();
 
             $table->timestamps();
         });

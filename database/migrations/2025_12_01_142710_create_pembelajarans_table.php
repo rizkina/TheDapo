@@ -24,6 +24,7 @@ return new class extends Migration
             $table->integer('jam_mengajar_per_minggu')->nullable();
             $table->integer('status_di_kurikulum')->nullable();
             $table->string('status_di_kurikulum_str')->nullable();
+            $table->softDeletes();
 
             $table->timestamps();
 
