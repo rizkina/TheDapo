@@ -5,12 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Siswa extends Model
 {
     use HasUuids, SoftDeletes;
 
+    public $incrementing = false;
+    protected $keyType = 'string';
+    
     protected $fillable = [
+        'id', // WAJIB TAMBAHKAN INI agar UUID dari Dapodik bisa masuk
         'sekolah_id',
         'registrasi_id',
         'jenis_pendaftaran_id',
@@ -51,38 +57,54 @@ class Siswa extends Model
         'kebutuhan_khusus',
     ];
 
-    protected $casts = [
-        'tanggal_lahir' => 'date',
-        'tanggal_masuk_sekolah' => 'date',
-    ];
+    /**
+     * Konfigurasi Casting (Standar Laravel 12)
+     */
+    protected function casts(): array
+    {
+        return [
+            'tanggal_lahir' => 'date',
+            'tanggal_masuk_sekolah' => 'date',
+            'tinggi_badan' => 'integer',
+            'berat_badan' => 'integer',
+        ];
+    }
 
-    public function sekolah()
+    // --- RELASI ---
+
+    public function sekolah(): BelongsTo
     {
         return $this->belongsTo(Sekolah::class, 'sekolah_id');
     }
 
-    public function agama()
+    public function agama(): BelongsTo
     {
         return $this->belongsTo(Agama::class, 'agama_id', 'kode');
     }
 
-    public function pekerjaanAyah()
+    public function pekerjaanAyah(): BelongsTo
     {
         return $this->belongsTo(Pekerjaan::class, 'pekerjaan_ayah_id', 'kode');
     }
 
-    public function pekerjaanIbu()
+    public function pekerjaanIbu(): BelongsTo
     {
         return $this->belongsTo(Pekerjaan::class, 'pekerjaan_ibu_id', 'kode');
     }
 
-    public function pekerjaanWali()
+    public function pekerjaanWali(): BelongsTo
     {
         return $this->belongsTo(Pekerjaan::class, 'pekerjaan_wali_id', 'kode');
     }
 
-    public function rombels() {
-        return $this->belongsToMany(Rombel::class, 'anggota_rombels', 'peserta_didik_id', 'rombel_id');
+    /**
+     * Relasi Many-to-Many ke Rombel
+     * Gunakan 'anggota__rombels' jika di migration menggunakan double underscore
+     */
+    public function rombels(): BelongsToMany
+    {
+        return $this->belongsToMany(Rombel::class, 'anggota__rombels', 'peserta_didik_id', 'rombel_id')
+                    ->withPivot('id', 'jenis_pendaftaran_id_str')
+                    ->withTimestamps();
     }
-
 }

@@ -72,18 +72,4 @@ class SekolahResource extends Resource
             ]);
     }
 
-    // public static function canCreate(): bool
-    // {
-    //     return false; // Menghilangkan tombol "New"
-    // }
-
-    // public static function canEdit($record): bool
-    // {
-    //     return false; // Menghilangkan tombol "Edit"
-    // }
-
-    // public static function canDelete($record): bool
-    // {
-    //     return false; // Menghilangkan tombol "Delete"
-    // }
 }
