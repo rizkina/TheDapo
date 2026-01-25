@@ -55,6 +55,24 @@ class Siswa extends Model
         'kurikulum_id',
         'kurikulum_id_str',
         'kebutuhan_khusus',
+        'nik_ayah',
+        'tahun_lahir_ayah',
+        'pendidikan_ayah_id',
+        'pendidikan_ayah_id_str',
+        'penghasilan_ayah_id',
+        'penghasilan_ayah_id_str',
+        'nik_ibu',
+        'tahun_lahir_ibu',
+        'pendidikan_ibu_id',
+        'pendidikan_ibu_id_str',
+        'penghasilan_ibu_id',
+        'penghasilan_ibu_id_str',
+        'nik_wali',
+        'tahun_lahir_wali',
+        'pendidikan_wali_id',
+        'pendidikan_wali_id_str',
+        'penghasilan_wali_id',
+        'penghasilan_wali_id_str',
     ];
 
     /**
@@ -95,6 +113,31 @@ class Siswa extends Model
     public function pekerjaanWali(): BelongsTo
     {
         return $this->belongsTo(Pekerjaan::class, 'pekerjaan_wali_id', 'kode');
+    }
+
+    public function pendidikanAyah(): BelongsTo
+    {
+        return $this->belongsTo(Pendidikan::class, 'pendidikan_ayah_id', 'kode');
+    }
+    public function pendidikanIbu(): BelongsTo
+    {
+        return $this->belongsTo(Pendidikan::class, 'pendidikan_ibu_id', 'kode');
+    }
+    public function pendidikanWali(): BelongsTo
+    {
+        return $this->belongsTo(Pendidikan::class, 'pendidikan_wali_id', 'kode');
+    }
+    public function penghasilanAyah(): BelongsTo
+    {
+        return $this->belongsTo(Penghasilan::class, 'penghasilan_ayah_id', 'kode');
+    }
+    public function penghasilanIbu(): BelongsTo
+    {
+        return $this->belongsTo(Penghasilan::class, 'penghasilan_ibu_id', 'kode');
+    }
+    public function penghasilanWali(): BelongsTo
+    {
+        return $this->belongsTo(Penghasilan::class, 'penghasilan_wali_id', 'kode');
     }
 
     /**

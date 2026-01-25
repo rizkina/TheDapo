@@ -17,8 +17,9 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Actions\CreateAction;
-
+use Filament\Actions\ViewAction;
+use Filament\Actions\BulkAction;
+use Filament\Tables;
 class SekolahResource extends Resource
 {
     protected static ?string $model = Sekolah::class;
@@ -42,9 +43,46 @@ class SekolahResource extends Resource
        
     }
 
+    // public static function table(Table $table): Table
+    // {
+    //     return SekolahsTable::configure($table);
+    // }
     public static function table(Table $table): Table
     {
-        return SekolahsTable::configure($table);
+        return $table
+            ->columns([
+                // Hanya tampilkan 3-4 kolom utama agar ringan
+                Tables\Columns\TextColumn::make('npsn')
+                    ->label('NPSN')
+                    ->copyable() // Memudahkan admin menyalin NPSN
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('nama')
+                    ->label('Nama Sekolah')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('kecamatan')
+                    ->label('Kecamatan'),
+
+                Tables\Columns\TextColumn::make('kabupaten_kota')
+                    ->label('Kota/Kabupaten'),
+            ])
+            ->filters([
+                // Tetap biarkan TrashedFilter jika ingin melihat data yang pernah dihapus
+                Tables\Filters\TrashedFilter::make(),
+            ])
+            ->actions([
+                // GANTI EditAction menjadi ViewAction
+                // Tables\Actions\ViewAction::make(), 
+                ViewAction::make()
+                    ->label('Lihat Detail')
+                    ->icon(Heroicon::Eye)
+                    ->button(),
+            ])
+            ->bulkActions([
+            //    
+            ]);
     }
 
     public static function getRelations(): array

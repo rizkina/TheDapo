@@ -3,12 +3,14 @@
 namespace App\Filament\Resources\Siswas\Pages;
 
 use App\Filament\Resources\Siswas\SiswaResource;
+use App\Filament\Resources\Siswas\Widgets\SiswaStats; 
 use App\Jobs\SyncSiswaJob;
 use App\Models\DapodikConf;
 use App\Services\DapodikService;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+// use App\Filament\Resources\Siswas\Widgets\SiswaStats;
 
 class ListSiswas extends ListRecords
 {
@@ -20,21 +22,20 @@ class ListSiswas extends ListRecords
             Actions\Action::make('syncSiswa')
                 ->label('Tarik Data Siswa')
                 ->icon('heroicon-o-arrow-path')
-                // Warna abu-abu jika config tidak ada
                 ->color(fn () => DapodikConf::where('is_active', true)->exists() ? 'success' : 'gray')
                 ->disabled(fn () => !DapodikConf::where('is_active', true)->exists())
                 ->requiresConfirmation()
                 ->modalHeading('Sinkronisasi Siswa Massal')
-                ->modalDescription('Data ribuan siswa akan ditarik di background menggunakan Redis. Pastikan koneksi ke server Dapodik aktif.')
+                ->modalDescription('Proses ini akan menarik data siswa ke antrean Redis. Anda bisa menutup halaman ini sementara proses berjalan.')
                 ->action(function (DapodikService $service) {
                     $config = DapodikConf::where('is_active', true)->first();
 
-                    // Cek Koneksi real-time sebelum antrekan job
+                    // Cek Koneksi real-time
                     $test = $service->testConnection($config->base_url, $config->token, $config->npsn);
 
                     if (!$test['success']) {
                         Notification::make()
-                            ->title('Koneksi Gagal')
+                            ->title('Gagal: Koneksi Terputus')
                             ->body($test['message'])
                             ->danger()
                             ->persistent()
@@ -42,20 +43,30 @@ class ListSiswas extends ListRecords
                         return;
                     }
 
-                    // Jalankan Job ke Queue Redis
+                    // Kirim ke Queue
                     SyncSiswaJob::dispatch();
 
-                    // Jalankan Worker otomatis untuk Windows (Laragon)
+                    // Memicu Worker secara otomatis di Windows (Background)
                     if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                        // Perintah start /B menjalankan artisan di background tanpa jendela cmd baru
                         pclose(popen("start /B php " . base_path('artisan') . " queue:work redis --stop-when-empty", "r"));
                     }
 
                     Notification::make()
-                        ->title('Sinkronisasi Dimulai')
-                        ->body('Data siswa sedang diproses di latar belakang. Silakan refresh halaman ini beberapa saat lagi.')
+                        ->title('Antrean Dimulai')
+                        ->body('Data siswa sedang diproses oleh Redis. Silakan refresh halaman ini beberapa saat lagi.')
                         ->info()
                         ->send();
                 }),
         ];
     }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            SiswaStats::class,
+        ];
+    }
+
+    
 }

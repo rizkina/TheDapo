@@ -5,10 +5,25 @@ namespace App\Services;
 use App\Models\DapodikConf;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Http\Client\Response; // Tambahkan import ini
+use Illuminate\Http\Client\Response;
 
 class DapodikService
 {
+    /**
+     * Memastikan URL memiliki format http://ip:port/WebService
+     */
+    private function prepareBaseUrl($url): string
+    {
+        $url = rtrim($url, '/');
+        
+        // Jika user lupa memasukkan /WebService, kita tambahkan secara otomatis
+        if (!str_contains($url, '/WebService')) {
+            $url .= '/WebService';
+        }
+        
+        return $url;
+    }
+
     public function getConfig()
     {
         return DapodikConf::where('is_active', true)->first();
@@ -20,14 +35,15 @@ class DapodikService
     public function testConnection($url, $token, $npsn): array
     {
         try {
-            $apiUrl = rtrim($url, '/') . '/getSekolah';
+            // Memastikan URL menjadi http://ip:port/WebService/getSekolah
+            $apiUrl = $this->prepareBaseUrl($url) . '/getSekolah';
 
             /** @var Response $response */
             $response = Http::withToken($token)
                 ->timeout(10)
                 ->withoutVerifying()
                 ->get($apiUrl, [
-                    'npsn' => $npsn
+                    'npsn' => $npsn // Laravel akan mengubah ini menjadi ?npsn=xxxx
                 ]);
 
             if ($response->successful()) {
@@ -61,11 +77,12 @@ class DapodikService
             throw new \Exception("Tidak ada konfigurasi Dapodik yang aktif.");
         }
 
-        $url = rtrim($config->base_url, '/') . '/' . ltrim($endpoint, '/');
+        // Contoh hasil: http://172.20.1.252:5774/WebService/getPesertaDidik
+        $url = $this->prepareBaseUrl($config->base_url) . '/' . ltrim($endpoint, '/');
 
         /** @var Response $response */
         $response = Http::withToken($config->token)
-            ->timeout(60)
+            ->timeout(120) // Tarik data banyak butuh waktu lebih lama
             ->withoutVerifying()
             ->get($url, array_merge(['npsn' => $config->npsn], $params));
 

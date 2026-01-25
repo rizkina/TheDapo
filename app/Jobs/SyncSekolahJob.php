@@ -23,49 +23,64 @@ class SyncSekolahJob implements ShouldQueue
     {
         Log::info("Memulai sinkronisasi data Sekolah dari Dapodik...");
 
-         try {
+        try {
             $res = $service->fetchData('getSekolah');
 
             if ($res && isset($res['rows'])) {
-                // Kita ambil hanya row pertama karena ini data profil sekolah
-                $row = $res['rows'][0] ?? null;
+                $rows = $res['rows'];
+
+                // Cek apakah 'rows' adalah array numerik atau object langsung
+                // Jika API memberikan object langsung (seperti contoh JSON Anda)
+                if (isset($rows['sekolah_id'])) {
+                    $row = $rows;
+                } 
+                // Jika API memberikan array (daftar sekolah)
+                else if (isset($rows[0])) {
+                    $row = $rows[0];
+                } 
+                else {
+                    $row = null;
+                }
 
                 if ($row) {
-                    // MENGHAPUS SEMUA DATA LAMA (agar benar-benar hanya ada 1 record)
-                    // Kita gunakan forceDelete jika ingin benar-benar hilang dari DB
+                    // MENGHAPUS SEMUA DATA LAMA
                     \App\Models\Sekolah::query()->forceDelete();
 
                     // BUAT RECORD BARU
                     \App\Models\Sekolah::create([
-                        'id' => $row['sekolah_id'],
+                        'id' => $row['sekolah_id'], // UUID
                         'npsn' => $row['npsn'],
                         'nama' => $row['nama'],
-                        'alamat_jalan' => $row['alamat_jalan'],
-                        'rt' => $row['rt'],
-                        'rw' => $row['rw'],
-                        'kode_wilayah' => $row['kode_wilayah'],
-                        'kode_pos' => $row['kode_pos'],
-                        'nomor_telepon' => $row['nomor_telepon'],
-                        'nomor_fax' => $row['nomor_fax'],
-                        'email' => $row['email'],
-                        'website' => $row['website'],
-                        'is_sks' => (bool) ($row['is_sks'] ?? false),
-                        'lintang' => $row['lintang'],
-                        'bujur' => $row['bujur'],
-                        'dusun' => $row['dusun'],
-                        'desa_kelurahan' => $row['desa_kelurahan'],
-                        'kecamatan' => $row['kecamatan'],
-                        'kabupaten_kota' => $row['kabupaten_kota'],
-                        'provinsi' => $row['provinsi'],
+                        'alamat_jalan' => $row['alamat_jalan'] ?? null,
+                        'rt' => $row['rt'] ?? null,
+                        'rw' => $row['rw'] ?? null,
+                        'kode_wilayah' => $row['kode_wilayah'] ?? null,
+                        'kode_pos' => $row['kode_pos'] ?? null,
+                        'nomor_telepon' => $row['nomor_telepon'] ?? null,
+                        'nomor_fax' => $row['nomor_fax'] ?? null,
+                        'email' => $row['email'] ?? null,
+                        'website' => $row['website'] ?? null,
+                        'is_sks' => filter_var($row['is_sks'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                        'lintang' => $row['lintang'] ?? null,
+                        'bujur' => $row['bujur'] ?? null,
+                        'dusun' => $row['dusun'] ?? null,
+                        'desa_kelurahan' => $row['desa_kelurahan'] ?? null,
+                        'kecamatan' => $row['kecamatan'] ?? null,
+                        'kabupaten_kota' => $row['kabupaten_kota'] ?? null,
+                        'provinsi' => $row['provinsi'] ?? null,
                     ]);
 
                     \App\Models\DapodikConf::where('is_active', true)->update([
                         'last_sync_at' => now()
                     ]);
+                    
+                    Log::info("Sinkronisasi Sekolah Berhasil: " . $row['nama']);
+                } else {
+                    Log::warning("Sinkronisasi Gagal: Format 'rows' tidak dikenali.");
                 }
             }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Gagal Sync Sekolah: " . $e->getMessage());
+            Log::error("Gagal Sync Sekolah: " . $e->getMessage());
         }
     }
 }

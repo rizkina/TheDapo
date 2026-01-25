@@ -32,16 +32,36 @@ return new class extends Migration
             $table->string('nomor_telepon_seluler')->nullable();
             
             $table->string('nama_ayah')->nullable();
+            $table->string('nik_ayah', 16)->nullable();
+            $table->string('tahun_lahir_ayah', 4)->nullable();
             $table->unsignedInteger('pekerjaan_ayah_id')->nullable(); // kode dari pekerjaans
             $table->string('pekerjaan_ayah_id_str')->nullable();
+            $table->unsignedInteger('pendidikan_ayah_id')->nullable();
+            $table->string('pendidikan_ayah_id_str')->nullable();
+            $table->unsignedInteger('penghasilan_ayah_id')->nullable();
+            $table->string('penghasilan_ayah_id_str')->nullable();
+
             
             $table->string('nama_ibu')->nullable();
+            $table->string('nik_ibu', 16)->nullable();
+            $table->string('tahun_lahir_ibu', 4)->nullable();
             $table->unsignedInteger('pekerjaan_ibu_id')->nullable(); // kode dari pekerjaans
             $table->string('pekerjaan_ibu_id_str')->nullable();
+            $table->unsignedInteger('pendidikan_ibu_id')->nullable();
+            $table->string('pendidikan_ibu_id_str')->nullable();
+            $table->unsignedInteger('penghasilan_ibu_id')->nullable();
+            $table->string('penghasilan_ibu_id_str')->nullable();
+
             
             $table->string('nama_wali')->nullable();
+            $table->string('nik_wali', 16)->nullable();
+            $table->string('tahun_lahir_wali', 4)->nullable();
             $table->unsignedInteger('pekerjaan_wali_id')->nullable(); // kode dari pekerjaans
             $table->string('pekerjaan_wali_id_str')->nullable();
+            $table->unsignedInteger('pendidikan_wali_id')->nullable();
+            $table->string('pendidikan_wali_id_str')->nullable();
+            $table->unsignedInteger('penghasilan_wali_id')->nullable();
+            $table->string('penghasilan_wali_id_str')->nullable();
             
             $table->integer('anak_keberapa')->nullable();
             $table->integer('tinggi_badan')->nullable();
@@ -64,7 +84,12 @@ return new class extends Migration
             $table->foreign('pekerjaan_ayah_id')->references('kode')->on('pekerjaans')->onDelete('set null');
             $table->foreign('pekerjaan_ibu_id')->references('kode')->on('pekerjaans')->onDelete('set null');
             $table->foreign('pekerjaan_wali_id')->references('kode')->on('pekerjaans')->onDelete('set null');
-
+            $table->foreign('pendidikan_ayah_id')->references('kode')->on('pendidikans')->onDelete('set null');
+            $table->foreign('pendidikan_ibu_id')->references('kode')->on('pendidikans')->onDelete('set null');
+            $table->foreign('pendidikan_wali_id')->references('kode')->on('pendidikans')->onDelete('set null');
+            $table->foreign('penghasilan_ayah_id')->references('kode')->on('penghasilans')->onDelete('set null');
+            $table->foreign('penghasilan_ibu_id')->references('kode')->on('penghasilans')->onDelete('set null');
+            $table->foreign('penghasilan_wali_id')->references('kode')->on('penghasilans')->onDelete('set null');
         });
     }
 
