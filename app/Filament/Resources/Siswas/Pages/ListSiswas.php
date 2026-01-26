@@ -10,6 +10,8 @@ use App\Services\DapodikService;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Builder; 
+use Filament\Schemas\Components\Tabs\Tab;
 // use App\Filament\Resources\Siswas\Widgets\SiswaStats;
 
 class ListSiswas extends ListRecords
@@ -54,10 +56,31 @@ class ListSiswas extends ListRecords
 
                     Notification::make()
                         ->title('Antrean Dimulai')
-                        ->body('Data siswa sedang diproses oleh Redis. Silakan refresh halaman ini beberapa saat lagi.')
+                        ->body('Data siswa sedang diproses oleh Aplikasi. Silakan refresh halaman ini beberapa saat lagi.')
                         ->info()
                         ->send();
                 }),
+        ];
+    }
+
+    public function getTabs(): array
+    {
+        return [
+            'aktif' => 
+                Tab::make('Siswa Aktif')
+                    ->modifyQueryUsing(fn (Builder $query) => $query->withoutTrashed())
+                    ->badge(\App\Models\Siswa::query()->count())
+                    ->badgeColor('success'),
+
+            'keluar' => 
+                Tab::make('Siswa Keluar / Alumni')
+                    ->modifyQueryUsing(fn (Builder $query) => $query->onlyTrashed())
+                    ->badge(\App\Models\Siswa::query()->onlyTrashed()->count())
+                    ->badgeColor('danger'),
+
+            'semua' => 
+                Tab::make('Semua Data')
+                    ->modifyQueryUsing(fn (Builder $query) => $query->withTrashed()),
         ];
     }
 

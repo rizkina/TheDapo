@@ -30,8 +30,9 @@ use Filament\Forms\Components\Select;
 use App\Exports\SiswaExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Blade;
+// use Illuminate\Support\Facades\Blade;
 use Filament\Actions\Action;
+use Illuminate\Database\Eloquent\Model;
 
 
 class SiswaResource extends Resource
@@ -232,6 +233,13 @@ class SiswaResource extends Resource
                 TextColumn::make('nama_ibu')
                     ->label('Nama Ibu')
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('deleted_at')
+                    ->label('Status')
+                    ->placeholder('Aktif')
+                    ->dateTime('d M Y')
+                    ->since() // Menampilkan "2 days ago" agar lebih manusiawi
+                    ->color('danger')
+                    ->visible(fn ($livewire) => $livewire->activeTab === 'keluar'), // Hanya muncul di tab 'keluar'
             ])
             ->headerActions([
                 Action::make('export excel')
@@ -311,6 +319,16 @@ class SiswaResource extends Resource
     }
 
     public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
     {
         return false;
     }

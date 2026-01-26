@@ -21,12 +21,14 @@ class DatabaseSeeder extends Seeder
         // 2. TRIGGER FILAMENT SHIELD (PENTING!)
         // Ini akan men-scan semua Resource (Siswa, Sekolah, dll) 
         // dan membuatkan permission-nya di database secara otomatis.
-    //    $this->command->info('Membangun Permission Shield (Sabar, ini memakan waktu)...');
+       $this->command->info('Membangun Permission Shield (Sabar, ini memakan waktu)...');
 
-    //     Artisan::call('shield:generate', [
-    //         '--all' => true,
-    //         '--panel' => 'app' // Sesuaikan dengan ID panel Anda (admin atau app)
-    //     ]);
+        Artisan::call('shield:generate', [
+            '--all' => true,
+            '--panel' => 'app', // Sesuai pilihan "app" (index 0)
+            '--option' => 'policies_and_permissions', // Sesuai pilihan "Policies & Permissions"
+            '--no-interaction' => true, // Menghindari prompt pertanyaan
+        ]);
 
         // 3. Buat Role Super Admin jika belum ada
         // (Biasanya sudah dibuatkan oleh command shield:generate di atas)
