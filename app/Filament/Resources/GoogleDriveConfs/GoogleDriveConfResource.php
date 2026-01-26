@@ -48,27 +48,67 @@ class GoogleDriveConfResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    public static function form(Schema $schema): Schema
+   public static function form(Schema $schema): Schema
     {
         return $schema
             ->components([
-                Section::make('Konfigurasi Google Drive')
+                Section::make('Kredensial API Google')
+                    ->description('Lengkapi data Client ID dan Secret, Simpan, lalu klik tombol Hubungkan.')
                     ->schema([
-                        TextInput::make('name')->required(),
-                        TextInput::make('folder_id')->label('Folder ID (Opsional)'),
-                        
+                        TextInput::make('name')
+                            ->label('Nama Koneksi')
+                            ->required()
+                            ->default('Google Drive Utama'),
+
+                        TextInput::make('folder_id')
+                            ->label('Folder ID Utama')
+                            ->placeholder('1By9_xxxxxxxxxxxxxxxxx')
+                            ->helperText('Salin ID dari URL folder Google Drive Anda.'),
+
+                        TextInput::make('client_id')
+                            ->label('Google Client ID')
+                            ->required()
+                            ->columnSpanFull(),
+
+                        TextInput::make('client_secret')
+                            ->label('Google Client Secret')
+                            ->password()
+                            ->revealable()
+                            ->required()
+                            ->columnSpanFull(),
+
+                        // --- TOMBOL HUBUNGKAN AKUN ---
                         Actions::make([
                             Action::make('connectGoogle')
                                 ->label('Hubungkan Akun Google')
                                 ->icon('heroicon-m-link')
                                 ->color('primary')
-                                ->url(fn () => route('google.drive.connect')), // Mengarah ke controller luar
+                                // Tombol ini hanya muncul jika record sudah di-save (punya ID)
+                                ->hidden(fn ($record) => $record === null)
+                                ->url(fn ($record) => route('google.drive.connect')), 
                         ])->columnSpanFull(),
-                        
-                        Placeholder::make('status')
-                            ->label('Status Koneksi')
-                            ->content(fn ($record) => $record?->refresh_token ? '✅ Terhubung' : '❌ Belum Terhubung'),
-                    ])->columns(2)
+
+                        // --- STATUS KONEKSI ---
+                        Placeholder::make('connection_status')
+                            ->label('Status Akun')
+                            ->content(fn ($record) => $record?->refresh_token 
+                                ? '✅ Terhubung (Aplikasi memiliki akses)' 
+                                : '❌ Belum Terhubung'
+                            ),
+
+                        Toggle::make('is_active')
+                            ->label('Aktifkan Sebagai Penyimpanan Utama')
+                            ->default(true),
+                    ])->columns(2),
+
+                // SEKSI TOKEN (READ ONLY - UNTUK DEBUG)
+                Section::make('Token Keamanan')
+                    ->description('Data ini terisi otomatis oleh Google.')
+                    ->collapsed()
+                    ->schema([
+                        Textarea::make('access_token')->disabled()->rows(3),
+                        Textarea::make('refresh_token')->disabled()->rows(3),
+                    ])
             ]);
     }
 
@@ -79,13 +119,17 @@ class GoogleDriveConfResource extends Resource
                 TextColumn::make('name')->searchable(),
                 TextColumn::make('folder_id')->label('Folder ID')->limit(20),
                 IconColumn::make('is_active')->label('Status')->boolean(),
-                TextColumn::make('created_at')->dateTime()->sortable()->toggledHiddenByDefault(),
+                // Indikator apakah sudah login google
+                TextColumn::make('refresh_token')
+                    ->label('Koneksi')
+                    ->formatStateUsing(fn ($state) => $state ? 'Terhubung' : 'Terputus')
+                    ->badge()
+                    ->color(fn ($state) => $state ? 'success' : 'danger'),
             ])
             ->filters([
                 TrashedFilter::make(),
             ])
             ->actions([
-                // Menggunakan ActionGroup agar UI rapi dan Intelephense tenang
                 ActionGroup::make([
                     ViewAction::make(),
                     EditAction::make(),
