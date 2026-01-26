@@ -8,31 +8,28 @@ use App\Services\GoogleDriveService;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Textarea;
-// use Filament\Forms\Components\Section;
-// IMPORT KHUSUS UNTUK ACTIONS DI DALAM FORM
-use Filament\Forms\Components\Actions; 
-use Filament\Forms\Components\Actions\Action;
-use Filament\Notifications\Notification;
-// IMPORT UNTUK TABEL
-use Filament\Resources\Resource;
+use Filament\Forms\Components\Placeholder;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
-use Filament\Tables;
+use Filament\Schemas\Components\Grid;
+// IMPORT UNTUK FORM ACTIONS
+use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Actions;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\RestoreBulkAction;
+use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Tables\Filters\TrashedFilter;
+use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ActionGroup;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\RestoreBulkAction;
-use Filament\Tables\Actions\ForceDeleteBulkAction;
-use Filament\Navigation\NavigationGroup;
-use Filament\Tables\Filters\TrashedFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Support\Icons\Heroicon;
 use BackedEnum;
 use UnitEnum;
 
@@ -40,14 +37,13 @@ class GoogleDriveConfResource extends Resource
 {
     protected static ?string $model = GoogleDriveConf::class;
 
-    // Gunakan string langsung untuk Heroicon agar tidak error di Intelephense
-    //  protected static string|BackedEnum|null $navigationIcon = Heroicon::Cloud;
-    // Ganti baris yang menyebabkan error (sekitar baris 42)
-    protected static ?string $navigationIcon = 'heroicon-o-cloud-arrow-up';
+    // Gunakan string langsung, jangan pakai Enum Heroicon::... agar tidak error
+    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-cloud';
     
-    protected static string |UnitEnum| null $navigationGroup = 'Settings';
+    protected static string | UnitEnum | null $navigationGroup = 'Settings';
     
     protected static ?string $navigationLabel = 'Google Drive Config';
+
     protected static ?string $pluralModelLabel = 'Google Drive Configs';
 
     protected static ?string $recordTitleAttribute = 'name';
@@ -58,51 +54,20 @@ class GoogleDriveConfResource extends Resource
             ->components([
                 Section::make('Konfigurasi Google Drive')
                     ->schema([
-                        TextInput::make('name')
-                            ->required()
-                            ->maxLength(255),
+                        TextInput::make('name')->required(),
+                        TextInput::make('folder_id')->label('Folder ID (Opsional)'),
                         
-                        TextInput::make('folder_id')
-                            ->label('Folder ID')
-                            ->required(),
-
-                        Textarea::make('service_account_json')
-                            ->label('Service Account JSON')
-                            ->required()
-                            ->rows(10)
-                            ->columnSpanFull(),
-
-                        // PEMBUNGKUS TOMBOL (MENGGUNAKAN CLASS ACTIONS YANG SUDAH DI-IMPORT)
                         Actions::make([
-                            Action::make('testGoogleConnection')
-                                ->label('Test Koneksi Google Drive')
-                                ->icon('heroicon-m-signal')
-                                ->color('warning')
-                                ->action(function ($get) {
-                                    $json = $get('service_account_json');
-                                    $folderId = $get('folder_id');
-
-                                    if (!$json || !$folderId) {
-                                        Notification::make()
-                                            ->title('Data tidak lengkap')
-                                            ->danger()
-                                            ->send();
-                                        return;
-                                    }
-
-                                    $result = GoogleDriveService::testConnectivity($json, $folderId);
-
-                                    if ($result['success']) {
-                                        Notification::make()->title($result['message'])->success()->send();
-                                    } else {
-                                        Notification::make()->title('Gagal')->body($result['message'])->danger()->persistent()->send();
-                                    }
-                                })
+                            Action::make('connectGoogle')
+                                ->label('Hubungkan Akun Google')
+                                ->icon('heroicon-m-link')
+                                ->color('primary')
+                                ->url(fn () => route('google.drive.connect')), // Mengarah ke controller luar
                         ])->columnSpanFull(),
-
-                        Toggle::make('is_active')
-                            ->label('Aktifkan Koneksi')
-                            ->default(true),
+                        
+                        Placeholder::make('status')
+                            ->label('Status Koneksi')
+                            ->content(fn ($record) => $record?->refresh_token ? '✅ Terhubung' : '❌ Belum Terhubung'),
                     ])->columns(2)
             ]);
     }
@@ -120,6 +85,7 @@ class GoogleDriveConfResource extends Resource
                 TrashedFilter::make(),
             ])
             ->actions([
+                // Menggunakan ActionGroup agar UI rapi dan Intelephense tenang
                 ActionGroup::make([
                     ViewAction::make(),
                     EditAction::make(),

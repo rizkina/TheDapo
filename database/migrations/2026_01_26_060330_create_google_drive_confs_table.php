@@ -14,7 +14,13 @@ return new class extends Migration
         Schema::create('google_drive_confs', function (Blueprint $table) {
             $table->id();
             $table->string('name')->default('Google Drive Utama');
-            $table->text('service_account_json'); // Kita simpan isi file JSON di sini
+            // Simpan Kredensial API di sini
+            $table->text('client_id')->nullable();
+            $table->text('client_secret')->nullable();
+            // Hasil Token otomatis
+            $table->text('access_token')->nullable();
+            $table->text('refresh_token')->nullable();
+            
             $table->string('folder_id')->nullable();
             $table->boolean('is_active')->default(false);
             $table->softDeletes();
