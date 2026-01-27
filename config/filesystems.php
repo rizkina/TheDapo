@@ -60,6 +60,14 @@ return [
             'report' => false,
         ],
 
+        'google' => [
+            'driver' => 'google',
+            'clientId' => null,
+            'clientSecret' => null,
+            'refreshToken' => null,
+            'folderId' => null,
+        ],
+
     ],
 
     /*

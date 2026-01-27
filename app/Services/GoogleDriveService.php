@@ -3,47 +3,71 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Storage;
+use App\Models\GoogleDriveConf;
 use Illuminate\Support\Facades\Config;
+
 
 class GoogleDriveService
 {
+    /**
+     * Menyuntikkan konfigurasi dari Database ke Filesystem Laravel
+     */
+    public static function applyConfig(?GoogleDriveConf $config = null)
+    {
+        // Jika tidak ada record yang dipassing, ambil yang aktif di DB
+        $config = $config ?? GoogleDriveConf::where('is_active', true)->first();
+
+        if ($config && $config->refresh_token) {
+            Config::set('filesystems.disks.google', [
+                'driver' => 'google',
+                'clientId' => $config->client_id,
+                'clientSecret' => $config->client_secret,
+                'refreshToken' => $config->refresh_token,
+                'folderId' => $config->folder_id,
+            ]);
+            return true;
+        }
+        return false;
+    }
+    
     // ... method applyConfig yang sudah ada ...
 
     /**
      * Fungsi untuk mengetes koneksi secara mandiri menggunakan data mentah
      */
-    public static function testConnectivity(string $json, string $folderId): array
+    public static function testConnectivity(): array
     {
         try {
-            $jsonArray = json_decode($json, true);
+            // Gunakan string tanpa backslash di depan untuk pengecekan
+            $className = 'Masbug\Flysystem\GoogleDriveAdapter';
 
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                return ['success' => false, 'message' => 'Format JSON tidak valid!'];
+            if (!class_exists($className)) {
+                return [
+                    'success' => false, 
+                    'message' => 'Sistem tidak menemukan Library Google Drive. Silakan jalankan "composer dump-autoload -o" lalu restart Laragon.'
+                ];
             }
 
-            // Kita buat disk temporary (on-the-fly) untuk ngetes
-            $config = [
-                'driver' => 'google',
-                'serviceAccountJson' => $jsonArray,
-                'folderId' => $folderId,
-            ];
+            if (!self::applyConfig()) {
+                return [
+                    'success' => false, 
+                    'message' => 'Status Akun belum Terhubung. Klik tombol Hubungkan Akun Google dulu.'
+                ];
+            }
 
-            // Build temporary disk
-            $disk = Storage::build($config);
-
-            // Coba ambil daftar file (hanya untuk ngetes koneksi)
-            $disk->files(); 
+            // Tes akses ke Google Drive
+            \Illuminate\Support\Facades\Storage::disk('google')->files(); 
 
             return [
-                'success' => true, 
-                'message' => 'Koneksi Berhasil! Aplikasi dapat mengakses folder Google Drive Anda.'
+                'success' => true,
+                'message' => 'Koneksi Berhasil! Driver google aktif.'
             ];
-            
         } catch (\Exception $e) {
             return [
-                'success' => false, 
+                'success' => false,
                 'message' => 'Koneksi Gagal: ' . $e->getMessage()
             ];
         }
     }
+
 }
