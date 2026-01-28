@@ -12,38 +12,45 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('ptks', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->uuid('id')->primary(); // Diisi dari 'ptk_id' di JSON
             $table->foreignUuid('sekolah_id')->nullable()->constrained('sekolahs')->nullOnDelete();
             $table->string('ptk_terdaftar_id')->nullable();
-            $table->string('ptk_induk')->nullable();
+            $table->string('ptk_induk', 1)->nullable(); // 1 = Induk, 0 = Non Induk
             $table->date('tanggal_surat_tugas')->nullable();
-            $table->string('nama');
+            $table->string('nama')->index();
             $table->char('jenis_kelamin', 1)->nullable();
             $table->string('tempat_lahir')->nullable();
             $table->date('tanggal_lahir')->nullable();
+            
             $table->unsignedInteger('agama_id')->nullable();
             $table->string('agama_id_str')->nullable();
-            $table->string('nuptk')->nullable()->index();
-            $table->string('nik')->nullable()->index();
+            
+            $table->string('nuptk', 20)->nullable()->index();
+            $table->string('nik', 16)->nullable()->index();
+            $table->string('nip', 20)->nullable()->index();
+            
             $table->integer('jenis_ptk_id')->nullable();
             $table->string('jenis_ptk_id_str')->nullable();
             $table->integer('jabatan_ptk_id')->nullable();
             $table->string('jabatan_ptk_id_str')->nullable();
             $table->integer('status_kepegawaian_id')->nullable();
             $table->string('status_kepegawaian_id_str')->nullable();
-            $table->string('nip')->nullable()->index();
-            $table->unsignedInteger('pendidikan_terakhir')->nullable(); // kode dari pendidikans
+            
+            // Perubahan: Gunakan string jika API mengirim "S1", "S2" 
+            // atau tetap integer jika Anda punya tabel konversi
+            $table->unsignedInteger('pendidikan_terakhir')->nullable(); 
             $table->string('bidang_studi_terakhir')->nullable();
             $table->string('pangkat_golongan_terakhir')->nullable();
+            
+            // PostgreSQL Jsonb untuk performa tinggi
             $table->jsonb('riwayat_pendidikan')->nullable();
             $table->jsonb('riwayat_kepangkatan')->nullable();
+            
             $table->softDeletes();
-
             $table->timestamps();
 
-            $table->foreign('agama_id')->references('kode')->on('agamas');
-            $table->foreign('pendidikan_terakhir')->references('kode')->on('pendidikans');
-
+            $table->foreign('agama_id')->references('kode')->on('agamas')->onDelete('set null');
+            $table->foreign('pendidikan_terakhir')->references('kode')->on('pendidikans')->onDelete('set null');
         });
     }
 

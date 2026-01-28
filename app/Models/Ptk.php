@@ -10,7 +10,11 @@ class Ptk extends Model
 {
     use HasUuids, SoftDeletes;
 
+    public $incrementing = false;
+    protected $keyType = 'string';
+
     protected $fillable = [
+        'id', // UUID dari ptk_id
         'sekolah_id',
         'ptk_terdaftar_id',
         'ptk_induk',
@@ -37,13 +41,25 @@ class Ptk extends Model
         'riwayat_kepangkatan',
     ];
 
-    protected $casts = [
-        'tanggal_lahir' => 'date',
-        'tanggal_surat_tugas' => 'date',
-        'riwayat_pendidikan' => 'array',
-        'riwayat_kepangkatan' => 'array',
-    ];
+    /**
+     * Casting otomatis (Laravel 12 Style)
+     */
+    protected function casts(): array
+    {
+        return [
+            'id' => 'string',
+            'tanggal_lahir' => 'date',
+            'tanggal_surat_tugas' => 'date',
+            'riwayat_pendidikan' => 'array', // mapping otomatis jsonb <-> array
+            'riwayat_kepangkatan' => 'array',
+            'agama_id' => 'integer',
+            'pendidikan_terakhir' => 'integer', // Pastikan ini integer agar sinkron dengan FK
+            'status_kepegawaian_id' => 'integer',
+            'jenis_ptk_id' => 'integer',
+        ];
+    }
 
+    // Relasi Eloquent
     public function sekolah()
     {
         return $this->belongsTo(Sekolah::class, 'sekolah_id');

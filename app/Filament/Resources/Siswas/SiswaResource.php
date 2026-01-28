@@ -65,7 +65,7 @@ class SiswaResource extends Resource
                     ])->columns(2),
 
                 // SEKSI 2: DATA YANG BOLEH DIEDIT
-                Section::make('Data Pelengkap & Orang Tua')
+                Section::make('Data Pelengkap Siswa')
                     ->description('Data di bawah ini diperbolehkan untuk diperbarui secara lokal.')
                     ->schema([
                         // Agama (Editable)
@@ -103,7 +103,7 @@ class SiswaResource extends Resource
                     ->description('Data tambahan yang dapat diisi sesuai kebutuhan.')
                     ->schema([
                         // Data Orang Tua (Editable)
-                        TextInput::make('nama_ayah'),
+                        TextInput::make('nama_ayah')->disabled(),
                         TextInput::make('nik_ayah')
                             ->label('NIK Ayah')
                             ->mask('9999999999999999') // Memaksa input 16 digit angka (UX sangat bagus)
@@ -127,7 +127,7 @@ class SiswaResource extends Resource
                             ->searchable()
                             ->preload(),
 
-                        TextInput::make('nama_ibu'),
+                        TextInput::make('nama_ibu')->disabled(),
                         TextInput::make('nik_ibu')
                             ->label('NIK Ibu')
                             ->mask('9999999999999999')
@@ -154,7 +154,7 @@ class SiswaResource extends Resource
                 Section::make('Data Wali')
                     ->description('Diisi jika siswa memiliki wali atau tinggal dengan selain Ayah/Ibu.')
                     ->schema([
-                        TextInput::make('nama_wali'),
+                        TextInput::make('nama_wali')->disabled(),
                         TextInput::make('nik_wali')
                             ->label('NIK Wali')
                             ->mask('9999999999999999')

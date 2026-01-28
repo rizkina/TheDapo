@@ -41,13 +41,53 @@ class SyncSiswaJob implements ShouldQueue
                     $upsertData = [];
                     foreach ($chunk as $row) {
                         $upsertData[] = [
-                            'id' => $row['peserta_didik_id'],
-                            'nama' => $row['nama'],
-                            'nisn' => $row['nisn'],
-                            'nik' => $row['nik'],
-                            'nipd' => $row['nipd'],
-                            'nama_rombel' => $row['nama_rombel'],
-                            'sekolah_id' => $service->getConfig()->sekolah_id ?? null,
+                             // Identitas Utama
+                            'id'                        => $row['peserta_didik_id'],
+                            'sekolah_id'                => $service->getConfig()->sekolah_id ?? null,
+                            'registrasi_id'             => $row['registrasi_id'],
+                            'jenis_pendaftaran_id'      => $this->sanitizeInt($row['jenis_pendaftaran_id']),
+                            'jenis_pendaftaran_id_str'  => $row['jenis_pendaftaran_id_str'],
+                            'nipd'                      => $row['nipd'],
+                            'tanggal_masuk_sekolah'     => $row['tanggal_masuk_sekolah'],
+                            'sekolah_asal'              => $row['sekolah_asal'],
+                            'nama'                      => $row['nama'],
+                            'nisn'                      => $row['nisn'],
+                            'jenis_kelamin'             => $row['jenis_kelamin'],
+                            'nik'                       => $row['nik'],
+                            'tempat_lahir'              => $row['tempat_lahir'],
+                            'tanggal_lahir'             => $row['tanggal_lahir'],
+                            'agama_id'                  => $this->sanitizeInt($row['agama_id']),
+                            'agama_id_str'              => $row['agama_id_str'],
+                            
+                            // Data Kontak & Fisik
+                            'nomor_telepon_rumah'       => $row['nomor_telepon_rumah'],
+                            'nomor_telepon_seluler'     => $row['nomor_telepon_seluler'],
+                            'email'                     => $row['email'],
+                            'anak_keberapa'             => (int) ($row['anak_keberapa'] ?? 0),
+                            'tinggi_badan'              => (int) ($row['tinggi_badan'] ?? 0),
+                            'berat_badan'               => (int) ($row['berat_badan'] ?? 0),
+                            
+                            // Data Orang Tua (Sesuai JSON)
+                            'nama_ayah'                 => $row['nama_ayah'],
+                            'pekerjaan_ayah_id'         => $this->sanitizeInt($row['pekerjaan_ayah_id']),
+                            'pekerjaan_ayah_id_str'     => $row['pekerjaan_ayah_id_str'],
+                            'nama_ibu'                  => $row['nama_ibu'],
+                            'pekerjaan_ibu_id'          => $this->sanitizeInt($row['pekerjaan_ibu_id']),
+                            'pekerjaan_ibu_id_str'      => $row['pekerjaan_ibu_id_str'],
+                            'nama_wali'                 => $row['nama_wali'],
+                            'pekerjaan_wali_id'         => $this->sanitizeInt($row['pekerjaan_wali_id']),
+                            'pekerjaan_wali_id_str'     => $row['pekerjaan_wali_id_str'],
+                            
+                            // Data Akademik
+                            'semester_id'               => $row['semester_id'],
+                            'anggota_rombel_id'         => $row['anggota_rombel_id'],
+                            'rombongan_belajar_id'      => $row['rombongan_belajar_id'],
+                            'tingkat_pendidikan_id'     => (int) $row['tingkat_pendidikan_id'],
+                            'nama_rombel'               => $row['nama_rombel'],
+                            'kurikulum_id'              => $this->sanitizeInt($row['kurikulum_id']),
+                            'kurikulum_id_str'          => $row['kurikulum_id_str'],
+                            'kebutuhan_khusus'          => $row['kebutuhan_khusus'],
+                            // Timestamps & Meta
                             'created_at' => now(), // Digunakan jika data baru (Insert)
                             'updated_at' => now(), // Selalu diupdate
                             'deleted_at' => null,  // Pastikan jika dulu pernah keluar lalu masuk lagi, statusnya aktif kembali
@@ -62,11 +102,29 @@ class SyncSiswaJob implements ShouldQueue
                      *   nilainya tidak akan tertimpa (terhapus) oleh data kosong dari API.
                      */
                     \App\Models\Siswa::upsert($upsertData, ['id'], [
-                        'nama', 
-                        'nisn', 
-                        'nik', 
-                        'nipd', 
-                        'nama_rombel', 
+                        'sekolah_id',
+                        'registrasi_id',
+                        'jenis_pendaftaran_id',
+                        'jenis_pendaftaran_id_str',
+                        'nipd',
+                        'tanggal_masuk_sekolah',
+                        'sekolah_asal',
+                        'nama',
+                        'nisn',
+                        'jenis_kelamin',
+                        'nik',
+                        'tempat_lahir',
+                        'tanggal_lahir',
+                        'nama_ayah',
+                        'nama_ibu',
+                        'nama_wali',
+                        'semester_id',
+                        'anggota_rombel_id',
+                        'rombongan_belajar_id',
+                        'tingkat_pendidikan_id',
+                        'nama_rombel',
+                        'kurikulum_id',
+                        'kurikulum_id_str',
                         'updated_at', 
                         'deleted_at' // Sangat penting untuk menghidupkan kembali siswa yang "pindah lalu kembali"
                     ]);
