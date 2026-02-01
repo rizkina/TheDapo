@@ -11,9 +11,12 @@ class Pembelajaran extends Model
 {
     use HasUuids, SoftDeletes;
 
+    public $incrementing = false;
+    protected $keyType = 'string';
+
     protected $fillable = [
+        'id', // Kita akan isi dengan 'pembelajaran_id' dari JSON
         'rombel_id',
-        'pembelajaran_id',
         'mata_pelajaran_id',
         'mata_pelajaran_id_str',
         'ptk_terdaftar_id',
@@ -25,11 +28,14 @@ class Pembelajaran extends Model
         'status_di_kurikulum_str',
     ];
 
-    protected $casts = [
-        'mata_pelajaran_id' => 'integer',
-        'jam_mengajar_per_minggu' => 'integer',
-        'status_di_kurikulum' => 'integer',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'mata_pelajaran_id' => 'integer',
+            'jam_mengajar_per_minggu' => 'integer',
+            'status_di_kurikulum' => 'integer',
+        ];
+    }
 
     public function rombel(): BelongsTo
     {
@@ -40,12 +46,4 @@ class Pembelajaran extends Model
     {
         return $this->belongsTo(Ptk::class, 'ptk_id');
     }
-
-    /**
-     * Helper: Mengecek apakah ini mata pelajaran utama (bukan tambahan/induk)
-     */
-    public function isMataPelajaranUtama(): bool
-    {
-        return is_null($this->induk_pembelajaran_id);
-    }    
 }

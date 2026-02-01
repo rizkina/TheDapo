@@ -5,12 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Rombel extends Model
 {
     use HasUuids, SoftDeletes;
 
+    // Tambahkan ini agar PostgreSQL tidak mencoba menganggap ID sebagai integer
+    public $incrementing = false;
+    protected $keyType = 'string';
+
     protected $fillable = [
+        'id', // WAJIB ada untuk proses Sync/Upsert
         'sekolah_id',
         'nama',
         'tingkat_pendidikan_id',
@@ -29,23 +36,26 @@ class Rombel extends Model
         'jurusan_id_str',
     ];
 
-    public function sekolah()
+    public function sekolah(): BelongsTo
     {
         return $this->belongsTo(Sekolah::class, 'sekolah_id');
     }
 
-    public function ptk()
+    public function ptk(): BelongsTo
     {
         return $this->belongsTo(Ptk::class, 'ptk_id');
     }
 
-    // Relasi langsung ke banyak siswa melalui tabel pivot anggota_rombels
-    public function siswas() {
-        return $this->belongsToMany(Siswa::class, 'anggota_rombels', 'rombel_id', 'peserta_didik_id')->withPivot('id', 'anggota_rombel_id','jenis_pendaftaran_id_str')->withTimestamps();
+    public function siswas(): BelongsToMany
+    {
+        // Pastikan nama tabel pivot anggota__rombels sesuai dengan migration (double underscore)
+        return $this->belongsToMany(Siswa::class, 'anggota__rombels', 'rombel_id', 'peserta_didik_id')
+            ->withPivot('id', 'anggota_rombel_id', 'jenis_pendaftaran_id_str')
+            ->withTimestamps();
     }
 
-    public function waliKelas()
+    public function waliKelas(): BelongsTo
     {
-        return $this->belongsTo(Ptk::class, 'ptk_id');
-    }    
+        return $this->ptk();
+    }
 }

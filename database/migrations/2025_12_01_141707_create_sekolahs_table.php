@@ -14,7 +14,10 @@ return new class extends Migration
         Schema::create('sekolahs', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('npsn',10)->unique();
+            $table->string('nss', 20)->nullable();
             $table->string('nama');
+            $table->string('bentuk_pendidikan_id_str', 50);
+            $table->string('status_sekolah_str', 20);
             $table->text('alamat_jalan')->nullable();
             $table->string('rt')->nullable();
             $table->string('rw')->nullable();

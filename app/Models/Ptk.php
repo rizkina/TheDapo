@@ -56,6 +56,7 @@ class Ptk extends Model
             'pendidikan_terakhir' => 'integer', // Pastikan ini integer agar sinkron dengan FK
             'status_kepegawaian_id' => 'integer',
             'jenis_ptk_id' => 'integer',
+            'pendidikan_terakhir' => 'integer',
         ];
     }
 

@@ -27,56 +27,54 @@ class SyncSekolahJob implements ShouldQueue
             $res = $service->fetchData('getSekolah');
 
             if ($res && isset($res['rows'])) {
-                $rows = $res['rows'];
+                $dataRows = $res['rows'];
 
-                // Cek apakah 'rows' adalah array numerik atau object langsung
-                // Jika API memberikan object langsung (seperti contoh JSON Anda)
-                if (isset($rows['sekolah_id'])) {
-                    $row = $rows;
-                } 
-                // Jika API memberikan array (daftar sekolah)
-                else if (isset($rows[0])) {
-                    $row = $rows[0];
-                } 
-                else {
-                    $row = null;
-                }
+                // Mendeteksi apakah 'rows' berupa object tunggal atau array
+                $row = isset($dataRows['sekolah_id']) ? $dataRows : ($dataRows[0] ?? null);
 
                 if ($row) {
-                    // MENGHAPUS SEMUA DATA LAMA
-                    \App\Models\Sekolah::query()->forceDelete();
+                    // 1. UPDATE atau CREATE (Menggunakan updateOrCreate lebih aman daripada Delete-Create)
+                    $sekolah = \App\Models\Sekolah::updateOrCreate(
+                        ['id' => $row['sekolah_id']], // Kunci pencarian
+                        [
+                            'npsn'                      => $row['npsn'],
+                            'nss'                       => $row['nss'] ?? null,
+                            'nama'                      => $row['nama'],
+                            'bentuk_pendidikan_id_str'  => $row['bentuk_pendidikan_id_str'] ?? null,
+                            'status_sekolah_str'        => $row['status_sekolah_str'] ?? null,
+                            'alamat_jalan'              => $row['alamat_jalan'] ?? null,
+                            'rt'                        => $row['rt'] ?? null,
+                            'rw'                        => $row['rw'] ?? null,
+                            'kode_wilayah'              => $row['kode_wilayah'] ?? null,
+                            'kode_pos'                  => $row['kode_pos'] ?? null,
+                            'nomor_telepon'             => $row['nomor_telepon'] ?? null,
+                            'nomor_fax'                 => $row['nomor_fax'] ?? null,
+                            'email'                     => $row['email'] ?? null,
+                            'website'                   => $row['website'] ?? null,
+                            'is_sks'                    => filter_var($row['is_sks'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                            'lintang'                   => $row['lintang'] ?? null,
+                            'bujur'                     => $row['bujur'] ?? null,
+                            'dusun'                     => $row['dusun'] ?? null,
+                            'desa_kelurahan'            => $row['desa_kelurahan'] ?? null,
+                            'kecamatan'                 => $row['kecamatan'] ?? null,
+                            'kabupaten_kota'            => $row['kabupaten_kota'] ?? null,
+                            'provinsi'                  => $row['provinsi'] ?? null,
+                        ]
+                    );
 
-                    // BUAT RECORD BARU
-                    \App\Models\Sekolah::create([
-                        'id' => $row['sekolah_id'], // UUID
-                        'npsn' => $row['npsn'],
-                        'nama' => $row['nama'],
-                        'alamat_jalan' => $row['alamat_jalan'] ?? null,
-                        'rt' => $row['rt'] ?? null,
-                        'rw' => $row['rw'] ?? null,
-                        'kode_wilayah' => $row['kode_wilayah'] ?? null,
-                        'kode_pos' => $row['kode_pos'] ?? null,
-                        'nomor_telepon' => $row['nomor_telepon'] ?? null,
-                        'nomor_fax' => $row['nomor_fax'] ?? null,
-                        'email' => $row['email'] ?? null,
-                        'website' => $row['website'] ?? null,
-                        'is_sks' => filter_var($row['is_sks'] ?? false, FILTER_VALIDATE_BOOLEAN),
-                        'lintang' => $row['lintang'] ?? null,
-                        'bujur' => $row['bujur'] ?? null,
-                        'dusun' => $row['dusun'] ?? null,
-                        'desa_kelurahan' => $row['desa_kelurahan'] ?? null,
-                        'kecamatan' => $row['kecamatan'] ?? null,
-                        'kabupaten_kota' => $row['kabupaten_kota'] ?? null,
-                        'provinsi' => $row['provinsi'] ?? null,
-                    ]);
+                    // 2. LOGIKA "HANYA 1 RECORD": 
+                    // Hapus sekolah lain yang ID-nya TIDAK SAMA dengan yang baru saja ditarik
+                    // Ini jauh lebih aman daripada menghapus semua di awal.
+                    \App\Models\Sekolah::where('id', '!=', $sekolah->id)->forceDelete();
 
+                    // 3. Update waktu sinkronisasi terakhir
                     \App\Models\DapodikConf::where('is_active', true)->update([
                         'last_sync_at' => now()
                     ]);
                     
-                    Log::info("Sinkronisasi Sekolah Berhasil: " . $row['nama']);
+                    Log::info("Sinkronisasi Sekolah Berhasil: " . $sekolah->nama);
                 } else {
-                    Log::warning("Sinkronisasi Gagal: Format 'rows' tidak dikenali.");
+                    Log::warning("Sinkronisasi Gagal: Format 'rows' tidak dikenali atau kosong.");
                 }
             }
         } catch (\Exception $e) {

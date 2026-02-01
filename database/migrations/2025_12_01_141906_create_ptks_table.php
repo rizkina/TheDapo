@@ -25,9 +25,9 @@ return new class extends Migration
             $table->unsignedInteger('agama_id')->nullable();
             $table->string('agama_id_str')->nullable();
             
-            $table->string('nuptk', 20)->nullable()->index();
+            $table->string('nuptk', 16)->nullable()->index();
             $table->string('nik', 16)->nullable()->index();
-            $table->string('nip', 20)->nullable()->index();
+            $table->string('nip', 18)->nullable()->index();
             
             $table->integer('jenis_ptk_id')->nullable();
             $table->string('jenis_ptk_id_str')->nullable();

@@ -33,6 +33,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 // use Illuminate\Support\Facades\Blade;
 use Filament\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 
 class SiswaResource extends Resource
@@ -41,7 +42,7 @@ class SiswaResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::UserGroup;
 
-     protected static ?string $pluralModelLabel = 'Siswa';
+    protected static ?string $pluralModelLabel = 'Siswa';
 
     protected static ?string $recordTitleAttribute = 'nama';
 
@@ -309,6 +310,44 @@ class SiswaResource extends Resource
             'edit' => EditSiswa::route('/{record}/edit'),
         ];
     }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
+
+            /** @var \App\Models\Dapodik_User $user */
+            $user = Auth::user();
+
+            // 2. Proteksi: Jika user belum login, jangan tampilkan apa-apa
+            if (!$user) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            // 3. Role: Super Admin, Admin, atau Operator (Lihat SEMUA data)
+            if ($user->hasAnyRole(['super_admin', 'admin', 'operator'])) {
+                return $query;
+            }
+
+            // 4. Role: Guru / GTK (Hanya lihat siswa di kelas binaannya / Wali Kelas)
+            if ($user->hasRole('guru')) {
+                return $query->whereHas('rombels', function (Builder $q) use ($user) {
+                    // Mencari rombel yang ptk_id-nya adalah ID Guru yang sedang login
+                    $q->where('ptk_id', $user->ptk_id);
+                });
+            }
+
+            // 5. Role: Siswa (Hanya lihat datanya sendiri)
+            if ($user->hasRole('siswa')) {
+                return $query->where('id', $user->peserta_didik_id);
+            }
+
+            // 6. Default: Jika user punya role lain yang tidak terdaftar, sembunyikan semua data (Safety First)
+            return $query->whereRaw('1 = 0');
+    }
+
 
     public static function getRecordRouteBindingEloquentQuery(): Builder
     {

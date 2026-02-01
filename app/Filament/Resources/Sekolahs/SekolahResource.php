@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Actions\ViewAction;
 use Filament\Actions\BulkAction;
 use Filament\Tables;
+use Google\Service\Docs\Tab;
+
 class SekolahResource extends Resource
 {
     protected static ?string $model = Sekolah::class;
@@ -56,17 +58,33 @@ class SekolahResource extends Resource
                     ->label('NPSN')
                     ->copyable() // Memudahkan admin menyalin NPSN
                     ->searchable(),
+                Tables\Columns\TextColumn::make('nss')
+                    ->label('NSS')
+                    ->copyable()
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('bentuk_pendidikan_id_str')
+                    ->label('Bentuk Pendidikan')
+                    ->badge()
+                    ->color('success')
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('nama')
                     ->label('Nama Sekolah')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('status_sekolah_str')
+                    ->label('Status Sekolah')
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('kecamatan')
                     ->label('Kecamatan'),
 
                 Tables\Columns\TextColumn::make('kabupaten_kota')
                     ->label('Kota/Kabupaten'),
+                Tables\Columns\TextColumn::make('provinsi')
+                    ->label('Provinsi')
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 // Tetap biarkan TrashedFilter jika ingin melihat data yang pernah dihapus

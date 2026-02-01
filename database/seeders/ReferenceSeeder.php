@@ -15,6 +15,7 @@ class ReferenceSeeder extends Seeder
     {
          $this->call([
             // UserSeeder::class,
+            RoleSeeder::class,
             AgamaSeeder::class,
             PendidikanSeeder::class,
             PekerjaanSeeder::class,

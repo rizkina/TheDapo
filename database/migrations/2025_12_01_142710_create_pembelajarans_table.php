@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('pembelajarans', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('rombel_id')->nullable()->constrained('rombels')->onDelete('cascade');
-            $table->string('pembelajaran_id')->index();
+            // $table->string('pembelajaran_id')->index();
             $table->integer('mata_pelajaran_id')->index();
             $table->string('mata_pelajaran_id_str');
             $table->string('ptk_terdaftar_id')->nullable();

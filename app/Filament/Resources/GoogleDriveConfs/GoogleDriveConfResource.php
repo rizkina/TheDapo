@@ -32,7 +32,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
 use Filament\Schemas\Components\Group;
-use Illuminate\Support\Facades\Storage;
+use Filament\Support\Icons\Heroicon;
 use BackedEnum;
 use UnitEnum;
 
@@ -41,7 +41,7 @@ class GoogleDriveConfResource extends Resource
     protected static ?string $model = GoogleDriveConf::class;
 
     // Gunakan string langsung, jangan pakai Enum Heroicon::... agar tidak error
-    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-cloud';
+    protected static string | BackedEnum | null $navigationIcon = Heroicon::Cloud;
     
     protected static string | UnitEnum | null $navigationGroup = 'Settings';
     
