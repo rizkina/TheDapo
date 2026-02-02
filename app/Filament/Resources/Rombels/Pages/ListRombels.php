@@ -9,6 +9,7 @@ use Filament\Notifications\Notification;
 use App\Jobs\SyncRombelJob;
 use App\Models\DapodikConf;
 use App\Services\DapodikService;
+use Illuminate\Support\Facades\Auth;
 
 
 class ListRombels extends ListRecords
@@ -46,7 +47,8 @@ class ListRombels extends ListRecords
                     }
 
                     // Masukkan ke antrean Redis
-                    SyncRombelJob::dispatch();
+                    // SyncRombelJob::dispatch();
+                    SyncRombelJob::dispatch(Auth::id());
 
                     // Jalankan Worker otomatis (Windows trick)
                     if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
@@ -62,4 +64,13 @@ class ListRombels extends ListRecords
             // Actions\CreateAction::make(),
         ];
     }
+
+    // public function getSubheading(): ?string
+    // {
+    //     $lastSync = \App\Models\DapodikConf::where('is_active', true)->first()?->last_sync_at;
+        
+    //     return $lastSync 
+    //         ? "Data terakhir diperbarui: " . $lastSync->diffForHumans() 
+    //         : "Data belum pernah disinkronkan.";
+    // }
 }

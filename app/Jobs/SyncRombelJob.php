@@ -15,6 +15,8 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Filament\Notifications\Notification;
+use App\Models\Dapodik_User;
 
 class SyncRombelJob implements ShouldQueue
 {
@@ -22,83 +24,115 @@ class SyncRombelJob implements ShouldQueue
 
     public $timeout = 1200; // 20 menit karena prosesnya berat
 
+    public $userId;
+    public function __construct($userId)
+    {
+        $this->userId = $userId;
+    }
+
     public function handle(DapodikService $service): void
     {
-        Log::info("Memulai Sinkronisasi Rombel Kompleks...");
+        Log::info("Memulai Sinkronisasi Rombel Lengkap...");
+        $totalRombel = 0;
 
         try {
-            $res = $service->fetchData('getRombonganBelajar');
+            // Ambil data dengan limit besar agar semua 84 rombel terbawa
+            $res = $service->fetchData('getRombonganBelajar', ['limit' => 500]);
 
             if ($res && isset($res['rows'])) {
+                $totalRombel = count($res['rows ']);
                 foreach ($res['rows'] as $row) {
-                    DB::transaction(function () use ($row, $service) {
-                        // 1. Sinkronisasi Data Rombel Utama
-                        $rombel = \App\Models\Rombel::updateOrCreate(
-                            ['id' => $row['rombongan_belajar_id']],
-                            [
-                                'sekolah_id'                => $service->getConfig()->sekolah_id ?? null,
-                                'nama'                      => $row['nama'],
-                                'tingkat_pendidikan_id'     => $row['tingkat_pendidikan_id'],
-                                'tingkat_pendidikan_id_str' => $row['tingkat_pendidikan_id_str'],
-                                'semester_id'               => $row['semester_id'],
-                                'kurikulum_id_str'          => $row['kurikulum_id_str'],
-                                'ptk_id'                    => $row['ptk_id'], // Wali Kelas
-                                'ptk_id_str'                => $row['ptk_id_str'],
-                                'moving_class'              => $row['moving_class'],
-                                'updated_at'                => now(),
-                            ]
-                        );
-
-                        // 2. Sinkronisasi Anggota Rombel (Siswa)
-                        if (isset($row['anggota_rombel'])) {
-                            $apiAnggotaIds = collect($row['anggota_rombel'])->pluck('anggota_rombel_id')->toArray();
+                    // Gunakan try-catch per baris agar jika 1 rombel error, 83 lainnya tetap masuk
+                    try {
+                        DB::transaction(function () use ($row, $service) {
                             
-                            // Hapus anggota yang sudah tidak ada di rombel ini (di Dapodik)
-                            \App\Models\Anggota_Rombel::where('rombel_id', $rombel->id)
-                                ->whereNotIn('id', $apiAnggotaIds)
-                                ->delete();
+                            // Cek apakah PTK (Wali Kelas) ada di DB kita
+                            $ptkExists = \App\Models\Ptk::where('id', $row['ptk_id'])->exists();
 
-                            foreach ($row['anggota_rombel'] as $anggota) {
-                                \App\Models\Anggota_Rombel::updateOrCreate(
-                                    ['id' => $anggota['anggota_rombel_id']],
-                                    [
-                                        'rombel_id'                => $rombel->id,
-                                        'peserta_didik_id'         => $anggota['peserta_didik_id'],
-                                        'jenis_pendaftaran_id_str' => $anggota['jenis_pendaftaran_id_str'],
-                                    ]
-                                );
-                            }
-                        }
+                            // 1. Sinkronisasi Data Rombel
+                            $rombel = \App\Models\Rombel::updateOrCreate(
+                                ['id' => $row['rombongan_belajar_id']],
+                                [
+                                    'sekolah_id'                => $service->getConfig()->sekolah_id ?? null,
+                                    'nama'                      => $row['nama'],
+                                    'tingkat_pendidikan_id'     => $row['tingkat_pendidikan_id'],
+                                    'tingkat_pendidikan_id_str' => $row['tingkat_pendidikan_id_str'],
+                                    'semester_id'               => $row['semester_id'],
+                                    'jenis_rombel'              => $row['jenis_rombel'],
+                                    'jenis_rombel_str'          => $row['jenis_rombel_str'],
+                                    'jurusan_id'                => $row['jurusan_id'],
+                                    'jurusan_id_str'            => $row['jurusan_id_str'],
+                                    'id_ruang'                  => $row['id_ruang'],
+                                    'id_ruang_str'              => $row['id_ruang_str'],
+                                    'kurikulum_id'              => $row['kurikulum_id'],
+                                    'kurikulum_id_str'          => $row['kurikulum_id_str'],
+                                    // Jika PTK tidak ditemukan di DB lokal, set null agar tidak error FK
+                                    'ptk_id'                    => $ptkExists ? $row['ptk_id'] : null, 
+                                    'ptk_id_str'                => $row['ptk_id_str'],
+                                    'moving_class'              => $row['moving_class'],
+                                    'updated_at'                => now(),
+                                ]
+                            );
 
-                        // 3. Sinkronisasi Pembelajaran (Guru & Mapel)
-                        if (isset($row['pembelajaran'])) {
-                            foreach ($row['pembelajaran'] as $pemb) {
-                                \App\Models\Pembelajaran::updateOrCreate(
-                                    ['id' => $pemb['pembelajaran_id']], // Gunakan pembelajaran_id sebagai PK
-                                    [
-                                        'rombel_id'               => $rombel->id,
-                                        'ptk_id'                  => $pemb['ptk_id'],
-                                        'mata_pelajaran_id'       => $pemb['mata_pelajaran_id'],
-                                        'mata_pelajaran_id_str'   => $pemb['mata_pelajaran_id_str'],
-                                        'nama_mata_pelajaran'     => $pemb['nama_mata_pelajaran'],
-                                        'jam_mengajar_per_minggu' => (int) ($pemb['jam_mengajar_per_minggu'] ?? 0),
-                                        'induk_pembelajaran_id'   => $pemb['induk_pembelajaran_id'],
-                                        'ptk_terdaftar_id'        => $pemb['ptk_terdaftar_id'] ?? null,
-                                        'status_di_kurikulum'     => (int) ($pemb['status_di_kurikulum'] ?? 0),
-                                        'status_di_kurikulum_str' => $pemb['status_di_kurikulum_str'] ?? null,
-                                    ]
-                                );
+                            // 2. Sinkronisasi Anggota Rombel
+                            if (isset($row['anggota_rombel'])) {
+                                foreach ($row['anggota_rombel'] as $anggota) {
+                                    // Pastikan Siswa ada di DB kita sebelum masukkan ke rombel
+                                    $pdExists = \App\Models\Siswa::where('id', $anggota['peserta_didik_id'])->exists();
+                                    
+                                    if ($pdExists) {
+                                        \App\Models\Anggota_Rombel::updateOrCreate(
+                                            ['id' => $anggota['anggota_rombel_id']],
+                                            [
+                                                'rombel_id'                => $rombel->id,
+                                                'peserta_didik_id'         => $anggota['peserta_didik_id'],
+                                                'jenis_pendaftaran_id_str' => $anggota['jenis_pendaftaran_id_str'],
+                                            ]
+                                        );
+                                    }
+                                }
                             }
-                        }
-                    });
-                }
+
+                            // 3. Sinkronisasi Pembelajaran
+                            if (isset($row['pembelajaran'])) {
+                                foreach ($row['pembelajaran'] as $pemb) {
+                                    $guruMapelExists = \App\Models\Ptk::where('id', $pemb['ptk_id'])->exists();
+
+                                    \App\Models\Pembelajaran::updateOrCreate(
+                                        ['id' => $pemb['pembelajaran_id']],
+                                        [
+                                            'rombel_id'               => $rombel->id,
+                                            'ptk_id'                  => $guruMapelExists ? $pemb['ptk_id'] : null,
+                                            'mata_pelajaran_id'       => $pemb['mata_pelajaran_id'],
+                                            'mata_pelajaran_id_str'   => $pemb['mata_pelajaran_id_str'],
+                                            'nama_mata_pelajaran'     => $pemb['nama_mata_pelajaran'],
+                                            'jam_mengajar_per_minggu' => (int) ($pemb['jam_mengajar_per_minggu'] ?? 0),
+                                        ]
+                                    );
+                                }
+                            }
+                        });
+                        $recipient = Dapodik_User::find($this->userId);
                 
-                // Update timestamp sinkronisasi terakhir
-                \App\Models\DapodikConf::where('is_active', true)->update(['last_sync_at' => now()]);
+                            if ($recipient) {
+                                Notification::make()
+                                    ->title('Sinkronisasi Rombel Selesai')
+                                    ->body("Berhasil menarik $totalRombel data Rombongan Belajar beserta Anggota dan Pembelajarannya.")
+                                    ->success()
+                                    ->icon('heroicon-o-check-circle')
+                                    ->sendToDatabase($recipient); // Notifikasi dikirim ke database
+                            }
+                            
+                            Log::info("Sinkronisasi Selesai.");
+                    } catch (\Exception $rowException) {
+                        Log::error("Gagal memproses Rombel: " . $row['nama'] . ". Error: " . $rowException->getMessage());
+                        continue; // Lanjut ke rombel berikutnya
+                    }
+                }
                 Log::info("Sinkronisasi Rombel Selesai.");
             }
         } catch (\Exception $e) {
-            Log::error("Gagal Sync Rombel: " . $e->getMessage());
+            Log::error("Koneksi API Gagal: " . $e->getMessage());
         }
     }
 }

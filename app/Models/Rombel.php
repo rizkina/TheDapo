@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Rombel extends Model
 {
@@ -35,6 +36,12 @@ class Rombel extends Model
         'jurusan_id',
         'jurusan_id_str',
     ];
+
+    public function pembelajarans(): HasMany
+    {
+        // Pastikan foreign key di tabel pembelajarans bernama 'rombel_id'
+        return $this->hasMany(Pembelajaran::class, 'rombel_id');
+    }
 
     public function sekolah(): BelongsTo
     {
