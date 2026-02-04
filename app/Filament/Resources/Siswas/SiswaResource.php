@@ -45,6 +45,7 @@ class SiswaResource extends Resource
     protected static ?string $pluralModelLabel = 'Siswa';
 
     protected static ?string $recordTitleAttribute = 'nama';
+    protected static ?int $navigationSort = 3;
 
     // 
     
@@ -244,10 +245,10 @@ class SiswaResource extends Resource
             ])
             ->headerActions([
                 Action::make('export excel')
-                    ->label('Excel (Semua)')
+                    ->label('Excel')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
-                    ->action(fn () => Excel::download(new SiswaExport(Siswa::all()), 'data-siswa.xlsx')),
+                    ->action(fn () => Excel::download(new SiswaExport(static::getEloquentQuery()->get()), 'data-siswa.xlsx')),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
@@ -313,13 +314,14 @@ class SiswaResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        /** @var \App\Models\Dapodik_User $user */
+        $user = Auth::user();
+
+        $query = parent::getEloquentQuery()
+            ->with(['rombels', 'sekolah', 'agama']) 
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
-
-            /** @var \App\Models\Dapodik_User $user */
-            $user = Auth::user();
 
             // 2. Proteksi: Jika user belum login, jangan tampilkan apa-apa
             if (!$user) {
@@ -333,6 +335,10 @@ class SiswaResource extends Resource
 
             // 4. Role: Guru / GTK (Hanya lihat siswa di kelas binaannya / Wali Kelas)
             if ($user->hasRole('guru')) {
+                if (!$user->ptk_id) {
+                    return $query->whereRaw('1 = 0');
+                }
+
                 return $query->whereHas('rombels', function (Builder $q) use ($user) {
                     // Mencari rombel yang ptk_id-nya adalah ID Guru yang sedang login
                     $q->where('ptk_id', $user->ptk_id);
@@ -341,13 +347,15 @@ class SiswaResource extends Resource
 
             // 5. Role: Siswa (Hanya lihat datanya sendiri)
             if ($user->hasRole('siswa')) {
+                 if (!$user->peserta_didik_id) {
+                    return $query->whereRaw('1 = 0');
+                }
                 return $query->where('id', $user->peserta_didik_id);
             }
 
             // 6. Default: Jika user punya role lain yang tidak terdaftar, sembunyikan semua data (Safety First)
             return $query->whereRaw('1 = 0');
     }
-
 
     public static function getRecordRouteBindingEloquentQuery(): Builder
     {

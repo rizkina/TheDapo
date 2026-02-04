@@ -49,8 +49,7 @@ return [
     |
     */
 
-    // 'auth_provider_model' => 'App\\Models\\User',
-    'auth_provider_model' => App\Models\Dapodik_User::class,
+    'auth_provider_model' => 'App\\Models\\User',
 
     /*
     |--------------------------------------------------------------------------

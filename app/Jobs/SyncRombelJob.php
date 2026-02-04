@@ -40,7 +40,7 @@ class SyncRombelJob implements ShouldQueue
             $res = $service->fetchData('getRombonganBelajar', ['limit' => 500]);
 
             if ($res && isset($res['rows'])) {
-                $totalRombel = count($res['rows ']);
+                $totalRombel = count($res['rows']);
                 foreach ($res['rows'] as $row) {
                     // Gunakan try-catch per baris agar jika 1 rombel error, 83 lainnya tetap masuk
                     try {

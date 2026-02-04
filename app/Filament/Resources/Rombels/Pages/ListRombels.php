@@ -10,11 +10,19 @@ use App\Jobs\SyncRombelJob;
 use App\Models\DapodikConf;
 use App\Services\DapodikService;
 use Illuminate\Support\Facades\Auth;
+use App\Filament\Resources\Rombels\Widgets\RombelStats;
 
 
 class ListRombels extends ListRecords
 {
     protected static string $resource = RombelResource::class;
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            RombelStats::class,
+        ];
+    }
 
     protected function getHeaderActions(): array
     {
@@ -25,6 +33,7 @@ class ListRombels extends ListRecords
             Actions\Action::make('generateDataRombel')
                 ->label('Generate Data Rombel')
                 ->icon('heroicon-o-document-text')
+                ->visible(fn () => Auth::user()->hasAnyRole('super_admin', 'admin', 'operator'))
                 ->color('primary')
                 ->color(fn () => DapodikConf::where('is_active', true)->exists() ? 'success' : 'gray')
                 ->disabled(fn () => !DapodikConf::where('is_active', true)->exists())
@@ -73,4 +82,6 @@ class ListRombels extends ListRecords
     //         ? "Data terakhir diperbarui: " . $lastSync->diffForHumans() 
     //         : "Data belum pernah disinkronkan.";
     // }
+
+    
 }

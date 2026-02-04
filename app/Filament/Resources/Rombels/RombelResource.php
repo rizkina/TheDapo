@@ -32,6 +32,8 @@ class RombelResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Rombel';
 
+    protected static ?int $navigationSort = 4;
+
     public static function form(Schema $schema): Schema
     {
         return RombelForm::configure($schema);

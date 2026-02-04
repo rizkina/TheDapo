@@ -33,6 +33,7 @@ class SekolahResource extends Resource
     protected static ?string $pluralModelLabel = 'Sekolah';
 
     protected static ?string $recordTitleAttribute = 'nama';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
     {

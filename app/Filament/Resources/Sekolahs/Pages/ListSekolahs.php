@@ -9,6 +9,7 @@ use App\Models\DapodikConf;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Facades\Auth;
 
 class ListSekolahs extends ListRecords
 {
@@ -20,7 +21,8 @@ class ListSekolahs extends ListRecords
             Actions\Action::make('syncSekolah')
                 ->label('Tarik Data Sekolah')
                 ->icon('heroicon-o-arrow-path')
-                 ->color(fn () => DapodikConf::where('is_active', true)->exists() ? 'success' : 'gray')
+                ->visible(fn () => Auth::user()->hasAnyRole('super_admin', 'admin', 'operator'))
+                ->color(fn () => DapodikConf::where('is_active', true)->exists() ? 'success' : 'gray')
                 ->disabled(function () {
                     return !DapodikConf::where('is_active', true)->exists();
                     })

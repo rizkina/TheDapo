@@ -28,6 +28,7 @@ use Filament\Actions\ViewAction;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Support\Facades\Auth;
 
 class PtkResource extends Resource
 {
@@ -35,7 +36,8 @@ class PtkResource extends Resource
 
     protected static string | BackedEnum | null $navigationIcon = Heroicon::Identification;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Manajemen GTK';
+    // protected static string | UnitEnum | null $navigationGroup = 'Manajemen GTK';
+    protected static ?int $navigationSort = 2;
 
     protected static ?string $navigationLabel = 'Data Guru & Tendik';
 
@@ -261,10 +263,36 @@ class PtkResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        /** @var \App\Models\Dapodik_User $user */
+        $user = Auth::user();
+
+        $query = parent::getEloquentQuery()
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
+        
+
+            // 2. Proteksi: Jika user belum login, jangan tampilkan apa-apa
+            if (!$user) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            // 3. Role: Super Admin, Admin, atau Operator (Lihat SEMUA data)
+            if ($user->hasAnyRole(['super_admin', 'admin', 'operator'])) {
+                return $query;
+            }
+
+            // 4. Role: Guru / GTK (Hanya lihat siswa di kelas binaannya / Wali Kelas)
+            if ($user->hasAnyRole('guru', 'tenaga kependidikan')) {
+                if (!$user->ptk_id) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where('id', $user->ptk_id);
+            }
+
+            // 6. Default: Jika user punya role lain yang tidak terdaftar, sembunyikan semua data (Safety First)
+            return $query->whereRaw('1 = 0');
     }
 
     public static function getRecordRouteBindingEloquentQuery(): Builder

@@ -9,6 +9,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use App\Models\DapodikConf;
 use App\Services\DapodikService;
+use Illuminate\Support\Facades\Auth;
 
 class ListDapodikUsers extends ListRecords
 {
@@ -23,6 +24,7 @@ class ListDapodikUsers extends ListRecords
             Actions\Action::make('generateAccounts')
                 ->label('Generate Akun Massal')
                 ->icon('heroicon-o-user-plus')
+                ->visible(fn () => Auth::user()->hasAnyRole('super_admin', 'admin', 'operator'))
                 ->color('warning')
                 ->requiresConfirmation()
                 ->color(fn () => DapodikConf::where('is_active', true)->exists() ? 'success' : 'gray')
@@ -43,7 +45,7 @@ class ListDapodikUsers extends ListRecords
                         return;
                     }
                     // Masukkan ke antrean Redis
-                    GenerateDapodikUsersJob::dispatch();
+                    GenerateDapodikUsersJob::dispatch(Auth::id());
 
                     // Jalankan Worker otomatis (Windows trick)
                     if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {

@@ -14,6 +14,7 @@ use App\Models\Ptk;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Schemas\Components\Tabs\Tab;
 use App\Filament\Resources\Ptks\Widgets\PtkStats;
+use Illuminate\Support\Facades\Auth;
 
 class ListPtks extends ListRecords
 {
@@ -26,6 +27,7 @@ class ListPtks extends ListRecords
             Action::make('syncPtk')
                 ->label('Tarik Data PTK')
                 ->icon('heroicon-o-arrow-path')
+                ->visible(fn () => Auth::user()->hasAnyRole('super_admin', 'admin', 'operator'))
                 ->color(fn () => DapodikConf::where('is_active', true)->exists() ? 'success' : 'gray')
                 ->disabled(fn () => !DapodikConf::where('is_active', true)->exists())
                 ->requiresConfirmation()
@@ -48,7 +50,7 @@ class ListPtks extends ListRecords
                         }
 
                         // 2. Kirim Job ke Redis
-                        SyncPtkJob::dispatch();
+                        SyncPtkJob::dispatch(Auth::id());
 
                         // 3. Auto-Worker untuk Windows/Laragon
                         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {

@@ -12,6 +12,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder; 
 use Filament\Schemas\Components\Tabs\Tab;
+use Illuminate\Support\Facades\Auth;
 // use App\Filament\Resources\Siswas\Widgets\SiswaStats;
 
 class ListSiswas extends ListRecords
@@ -24,15 +25,15 @@ class ListSiswas extends ListRecords
             Actions\Action::make('syncSiswa')
                 ->label('Tarik Data Siswa')
                 ->icon('heroicon-o-arrow-path')
+                ->visible(fn () => Auth::user()->hasAnyRole('super_admin', 'admin', 'operator'))
                 ->color(fn () => DapodikConf::where('is_active', true)->exists() ? 'success' : 'gray')
                 ->disabled(fn () => !DapodikConf::where('is_active', true)->exists())
                 ->requiresConfirmation()
                 ->modalHeading('Sinkronisasi Siswa Massal')
                 ->modalDescription('Proses ini akan menarik data siswa ke antrean Redis. Anda bisa menutup halaman ini sementara proses berjalan.')
                 ->action(function (DapodikService $service) {
-                    $config = DapodikConf::where('is_active', true)->first();
-
                     // Cek Koneksi real-time
+                    $config = DapodikConf::where('is_active', true)->first();
                     $test = $service->testConnection($config->base_url, $config->token, $config->npsn);
 
                     if (!$test['success']) {
@@ -46,7 +47,7 @@ class ListSiswas extends ListRecords
                     }
 
                     // Kirim ke Queue
-                    SyncSiswaJob::dispatch();
+                    SyncSiswaJob::dispatch(Auth::id());
 
                     // Memicu Worker secara otomatis di Windows (Background)
                     if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
