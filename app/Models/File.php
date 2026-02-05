@@ -24,4 +24,24 @@ class File extends Model
     {
         return $this->belongsTo(Dapodik_User::class, 'user_id');
     }
+
+    public function category()
+    {
+        return $this->belongsTo(FileCategory::class, 'file_category_id');
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($file) {
+            // Cari apakah user sudah pernah upload kategori ini
+            $existing = self::where('user_id', $file->user_id)
+                            ->where('file_category_id', $file->file_category_id)
+                            ->first();
+            
+            if ($existing) {
+                // Hapus record lama di database agar diganti yang baru (Overwrite)
+                $existing->forceDelete(); 
+            }
+        });
+    }
 }

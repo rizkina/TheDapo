@@ -278,7 +278,7 @@ class PtkResource extends Resource
             }
 
             // 3. Role: Super Admin, Admin, atau Operator (Lihat SEMUA data)
-            if ($user->hasAnyRole(['super_admin', 'admin', 'operator'])) {
+            if ($user->hasAnyRole(['super_admin', 'admin', 'operator', 'kepsek'])) {
                 return $query;
             }
 

@@ -213,12 +213,15 @@ class RombelResource extends Resource
         }
 
         // 3. Jika Super Admin / Admin / Operator, biarkan melihat semua
-        if ($user->hasAnyRole(['super_admin', 'admin', 'operator'])) {
+        if ($user->hasAnyRole(['super_admin', 'admin', 'operator', 'kepsek'])) {
             return $query;
         }
 
         // 4. Jika GTK (Guru)
         if ($user->hasRole('guru')) {
+            if (!$user->ptk_id) {
+                    return $query->whereRaw('1 = 0');
+                }
             // Cek apakah dia wali kelas di suatu rombel
             return $query->where('ptk_id', $user->ptk_id);
             // return $query->whereHas('rombels', function ($q) use ($user) {
@@ -228,10 +231,12 @@ class RombelResource extends Resource
 
         // 3. Jika Siswa, hanya lihat dirinya sendiri
         if ($user->hasRole('siswa')) {
-            return $query->where('id', $user->peserta_didik_id);
-            // return $query->whereHas('siswas', function ($q) use ($user) {
-            //     $q->where('siswas.id', $user->peserta_didik_id);
-            // });
+            if (!$user->peserta_didik_id) {
+                    return $query->whereRaw('1 = 0');
+                }
+            return $query->whereHas('siswas', function ($q) use ($user) {
+                $q->where('siswas.id', $user->peserta_didik_id);
+            });
         }
 
         // Default: Tidak ada akses jika role tidak dikenali
