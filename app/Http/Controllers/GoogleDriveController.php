@@ -6,15 +6,21 @@ use App\Models\GoogleDriveConf;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\GoogleProvider;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
 
 class GoogleDriveController extends Controller
 {
     private function setDynamicConfig($config)
     {
-         Config::set('services.google', [
+        if (!$config) return;
+
+        // DINAMIS & AMAN: Menggunakan route() agar mengikuti domain/IP hosting secara otomatis
+        $redirectUrl = route('google.drive.callback');
+
+        Config::set('services.google', [
             'client_id' => trim($config->client_id),
             'client_secret' => trim($config->client_secret),
-            'redirect' => url('/google-drive/callback'),
+            'redirect' => $redirectUrl,
         ]);
     }
 
@@ -22,13 +28,14 @@ class GoogleDriveController extends Controller
     {
         $config = GoogleDriveConf::where('is_active', true)->first();
         
-        if (!$config || !$config->client_id) {
-            return "Error: Client ID belum diisi!";
+        // Proteksi awal agar tidak terjadi 'malformed request' ke Google
+        if (!$config || !$config->client_id || !$config->client_secret) {
+            return back()->with('error', 'Client ID dan Secret wajib diisi di database!');
         }
 
         $this->setDynamicConfig($config);
 
-        /** @var \Laravel\Socialite\Two\GoogleProvider $driver */
+        /** @var GoogleProvider $driver */
         $driver = Socialite::driver('google');
 
         return $driver
@@ -40,15 +47,32 @@ class GoogleDriveController extends Controller
     public function callback()
     {
         $config = GoogleDriveConf::where('is_active', true)->first();
+        
+        if (!$config) return redirect('/app')->with('error', 'Konfigurasi tidak ditemukan.');
+
         $this->setDynamicConfig($config);
 
-        $googleUser = Socialite::driver('google')->user();
+        try {
+            /** @var GoogleProvider $driver */
+            $driver = Socialite::driver('google');
+            $googleUser = $driver->user();
 
-        $config->update([
-            'access_token' => $googleUser->token,
-            'refresh_token' => $googleUser->refreshToken,
-        ]);
+            // Simpan token dengan aman
+            $config->update([
+                'access_token' => $googleUser->token,
+                'refresh_token' => $googleUser->refreshToken,
+            ]);
 
-        return redirect('/app/google-drive-confs');
+            Log::info("Google Drive: Akun berhasil dihubungkan untuk " . $config->name);
+
+            return redirect('/app/google-drive-confs');
+
+        } catch (\Exception $e) {
+            // Mencatat error ke log agar mudah diperbaiki tanpa menebak-nebak
+            Log::error("Google Drive Auth Error: " . $e->getMessage());
+            
+            return redirect('/app/google-drive-confs')
+                ->with('error', 'Gagal menghubungkan akun: ' . $e->getMessage());
+        }
     }
 }

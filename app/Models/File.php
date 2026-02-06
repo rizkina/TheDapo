@@ -11,6 +11,8 @@ class File extends Model
     use HasUuids, SoftDeletes;
 
     protected $fillable = [
+        'id',
+        'file_category_id',
         'user_id',
         'file_path',
         'file_name',
@@ -33,14 +35,16 @@ class File extends Model
     protected static function booted()
     {
         static::creating(function ($file) {
-            // Cari apakah user sudah pernah upload kategori ini
-            $existing = self::where('user_id', $file->user_id)
-                            ->where('file_category_id', $file->file_category_id)
-                            ->first();
-            
-            if ($existing) {
-                // Hapus record lama di database agar diganti yang baru (Overwrite)
-                $existing->forceDelete(); 
+            if ($file->file_category_id && $file->user_id) {
+                // Cari apakah user sudah pernah upload kategori ini
+                $existing = self::where('user_id', $file->user_id)
+                                ->where('file_category_id', $file->file_category_id)
+                                ->first();
+                
+                if ($existing) {
+                    // Hapus record lama di database agar diganti yang baru (Overwrite)
+                    $existing->forceDelete(); 
+                }
             }
         });
     }

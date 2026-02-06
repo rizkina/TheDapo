@@ -213,7 +213,7 @@ class RombelResource extends Resource
         }
 
         // 3. Jika Super Admin / Admin / Operator, biarkan melihat semua
-        if ($user->hasAnyRole(['super_admin', 'admin', 'operator', 'kepsek'])) {
+        if ($user->hasAnyRole(['super_admin', 'admin', 'operator', 'kepsek', 'tenaga kependidikan'])) {
             return $query;
         }
 

@@ -110,9 +110,9 @@ class GoogleDriveConfResource extends Resource
                                 ->default('Google Drive Utama'),
 
                             TextInput::make('folder_id')
-                                ->label('Folder ID Utama')
+                                ->label('Folder Utama')
                                 ->placeholder('1By9_xxxxxxxxxxxxxxxxx')
-                                ->helperText('Salin ID dari URL folder Google Drive Anda.'),
+                                ->helperText('Berikan nama untuk folder Google Drive utama.'),
 
                             TextInput::make('client_id')
                                 ->label('Google Client ID')

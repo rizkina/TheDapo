@@ -20,11 +20,12 @@ class GoogleDriveService
         if ($config && $config->refresh_token) {
             Config::set('filesystems.disks.google', [
                 'driver' => 'google',
-                'clientId' => $config->client_id,
-                'clientSecret' => $config->client_secret,
-                'refreshToken' => $config->refresh_token,
-                'folderId' => $config->folder_id,
+                'clientId' => trim($config->client_id),
+                'clientSecret' => trim($config->client_secret),
+                'refreshToken' => trim($config->refresh_token),
+                'folderId' => trim($config->folder_id),
             ]);
+             \Illuminate\Support\Facades\Storage::forgetDisk('google');
             return true;
         }
         return false;

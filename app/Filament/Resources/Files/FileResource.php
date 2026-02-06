@@ -71,7 +71,11 @@ class FileResource extends Resource
                         ->label('Unggah PDF')
                         ->disk('google') // Pakai driver Google Drive
                         ->acceptedFileTypes(['application/pdf'])
-                        ->maxSize(5120) // 5MB
+                        ->maxSize(2048) // 2 MB
+                        ->helperText('Ukuran file maksimal adalah 2 MB dalam format PDF.') 
+                        ->validationMessages([
+                                'max' => 'Ukuran file terlalu besar. Maksimal diperbolehkan adalah 2 MB.',
+                            ])
                         ->directory(function ($get) {
                             $user = Auth::user();
                             $category = FileCategory::find($get('file_category_id'));
@@ -120,9 +124,19 @@ class FileResource extends Resource
                 TextColumn::make('category.nama')->label('Kategori')->badge()->color('info')->sortable(),
                 TextColumn::make('file_name')->label('Keterangan')->searchable()->sortable()
                     ->description(fn (File $record) => "File asli: {$record->original_name}"),
+
                 TextColumn::make('user.nama')->label('Pemilik')
-                    ->visible(fn () => Auth::user()->hasAnyRole(['super_admin', 'admin', 'operator']))
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable()
+                    // ->description(fn (File $record) => "{$record->user->username}"),
+                    ->visible(fn () => Auth::user()->hasAnyRole(['super_admin', 'admin', 'operator', 'guru', 'tenaga kependidikan', 'kepsek'])),
+                TextColumn::make('user.roles.name')
+                    ->label('Peran')
+                    ->badge()
+                    ->color('success')
+                    ->separator(',')
+                    ->searchable()
+                    ->visible(fn () => Auth::user()->hasAnyRole(['super_admin', 'admin', 'operator', 'guru', 'tenaga kependidikan', 'kepsek'])),
                 TextColumn::make('size')->label('Ukuran')
                     ->formatStateUsing(fn ($state) => number_format($state / 1024, 2) . ' KB')
                     ->color('gray'),
@@ -203,10 +217,30 @@ class FileResource extends Resource
     }
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery()->with(['category', 'user']);
+        $query = parent::getEloquentQuery()->with(['category', 'user.roles'])->withoutGlobalScopes([
+            SoftDeletingScope::class,
+        ]);
         $user = Auth::user();
-        if ($user->hasAnyRole(['super_admin', 'admin', 'operator'])) return $query;
-        return $query->where('user_id', $user->id);
+        if ($user->hasAnyRole(['super_admin', 'admin', 'operator'])) {
+            return $query;
+        }
+        return $query->where(function (Builder $q) use ($user) {
+            $q->where('user_id', $user->id);
+
+            if ($user->hasAnyRole(['tenaga kependidikan', 'kepsek'])) {
+              $q->orWhereHas('user', function ($subQ) {
+                    $subQ->whereHas('roles', function ($roleQ) {
+                        $roleQ->whereIn('name', ['guru', 'siswa', 'tenaga kependidikan', 'kepsek']);
+                    });
+              });
+        }
+
+            if  ($user->hasRole('guru') && $user->ptk_id) {
+                $q->orWhereHas('user.siswa.rombels', function ($rombelQ) use ($user) {
+                    $rombelQ->where('ptk_id', $user->ptk_id);
+                });
+            }
+        });
     }
 
     public static function getRecordRouteBindingEloquentQuery(): Builder

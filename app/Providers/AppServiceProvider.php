@@ -9,6 +9,8 @@ use League\Flysystem\Filesystem as Flysystem;
 use Masbug\Flysystem\GoogleDriveAdapter;
 use Google\Client as GoogleClient;
 use Google\Service\Drive as GoogleDrive;
+use Illuminate\Support\Facades\Gate;
+use App\Models\Dapodik_User;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,12 +30,12 @@ class AppServiceProvider extends ServiceProvider
 
                 $service = new GoogleDrive($client);
                 
-                $folderId = $config['folderId'] ?? '/';
+                $rootFolderId = !empty($config['folderId']) ? trim($config['folderId']) : 'root';
 
                 // 1. Definisikan Adapter dengan Namespace yang BENAR
                 // Kita beri komentar @var agar IDE tahu ini mengimplementasikan interface Flysystem
                 /** @var \League\Flysystem\FilesystemAdapter $adapter */
-                $adapter = new GoogleDriveAdapter($service, $folderId);
+                $adapter = new GoogleDriveAdapter($service, $rootFolderId);
                 
                 // 2. Buat Operator Flysystem
                 $operator = new Flysystem($adapter);
@@ -44,5 +46,9 @@ class AppServiceProvider extends ServiceProvider
         } catch (\Exception $e) {
             // Biarkan kosong untuk keamanan booting
         }
+
+         Gate::before(function (Dapodik_User $user, $ability) {
+            return $user->hasRole('super_admin') ? true : null;
+        });
     }
 }

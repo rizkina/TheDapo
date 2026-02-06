@@ -1,4 +1,7 @@
-<h2>Daftar Arsip Dokumen</h2>
+<center>
+    <h1>Arsip Dokumen</h1>
+</center>
+{{-- <h2>Daftar Arsip Dokumen</h2> --}}
 <table border="1" width="100%" style="border-collapse: collapse;">
     <thead>
         <tr>

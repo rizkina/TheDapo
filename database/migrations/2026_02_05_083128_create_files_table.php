@@ -24,9 +24,7 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->timestamps();
-
-            $table->foreign('user_id')->references('id')->on('dapodik_users')->onDelete('cascade');
-            $table->foreign('file_category_id')->references('id')->on('file_categories')->onDelete('cascade');
+            $table->index(['user_id', 'file_category_id']);
             
         });
     }
