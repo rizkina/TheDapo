@@ -5,12 +5,13 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Filesystem\FilesystemAdapter as LaravelAdapter;
-use League\Flysystem\Filesystem as Flysystem;
+use League\Flysystem\Filesystem;
 use Masbug\Flysystem\GoogleDriveAdapter;
 use Google\Client as GoogleClient;
 use Google\Service\Drive as GoogleDrive;
 use Illuminate\Support\Facades\Gate;
 use App\Models\Dapodik_User;
+use Exception;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,21 +31,23 @@ class AppServiceProvider extends ServiceProvider
 
                 $service = new GoogleDrive($client);
                 
+                // Pastikan folderId bersih dari spasi dan tidak null
                 $rootFolderId = !empty($config['folderId']) ? trim($config['folderId']) : 'root';
 
-                // 1. Definisikan Adapter dengan Namespace yang BENAR
-                // Kita beri komentar @var agar IDE tahu ini mengimplementasikan interface Flysystem
-                /** @var \League\Flysystem\FilesystemAdapter $adapter */
+                // 1. Buat Adapter
+                // Parameter kedua adalah ID folder yang akan dianggap sebagai "/" (root) oleh aplikasi
                 $adapter = new GoogleDriveAdapter($service, $rootFolderId);
                 
-                // 2. Buat Operator Flysystem
-                $operator = new Flysystem($adapter);
+                // 2. Buat Operator Flysystem (Standar V3)
+                $operator = new Filesystem($adapter);
 
-                // 3. Kembalikan FilesystemAdapter milik Laravel
+                // 3. Kembalikan instance LaravelAdapter
+                // Penting: Sertakan $config agar metadata seperti 'url' bisa diproses Laravel
                 return new LaravelAdapter($operator, $adapter, $config);
             });
         } catch (\Exception $e) {
-            // Biarkan kosong untuk keamanan booting
+            // Log error jika extend gagal saat booting
+            \Illuminate\Support\Facades\Log::error("Gagal mendaftarkan Driver Google Drive: " . $e->getMessage());
         }
 
          Gate::before(function (Dapodik_User $user, $ability) {

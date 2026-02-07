@@ -33,6 +33,10 @@ use Filament\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
+use App\Exports\FileExport;
+use Maatwebsite\Excel\Facades\Excel;
+use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\Filter;
 
 
 class FileResource extends Resource
@@ -128,7 +132,7 @@ class FileResource extends Resource
                 TextColumn::make('user.nama')->label('Pemilik')
                     ->searchable()
                     ->sortable()
-                    // ->description(fn (File $record) => "{$record->user->username}"),
+                    ->description(fn (File $record) => "{$record->user->username}")
                     ->visible(fn () => Auth::user()->hasAnyRole(['super_admin', 'admin', 'operator', 'guru', 'tenaga kependidikan', 'kepsek'])),
                 TextColumn::make('user.roles.name')
                     ->label('Peran')
@@ -136,6 +140,7 @@ class FileResource extends Resource
                     ->color('success')
                     ->separator(',')
                     ->searchable()
+                    ->hidden(fn ($livewire) => $livewire instanceof ListFiles && $livewire->activeTab === 'milik_saya')
                     ->visible(fn () => Auth::user()->hasAnyRole(['super_admin', 'admin', 'operator', 'guru', 'tenaga kependidikan', 'kepsek'])),
                 TextColumn::make('size')->label('Ukuran')
                     ->formatStateUsing(fn ($state) => number_format($state / 1024, 2) . ' KB')
@@ -147,17 +152,61 @@ class FileResource extends Resource
                 Action::make('export_pdf')
                     ->label('Cetak PDF')
                     ->icon('heroicon-o-printer')
-                    ->color('danger')
+                    ->color('info')
                     ->action(function () {
                         $records = static::getEloquentQuery()->get();
                         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.files', ['files' => $records]);
                         return response()->streamDownload(fn () => print($pdf->output()), 'daftar-arsip.pdf');
                     }),
+                // FITUR EKSPOR EXCEL (SEMUA)
+                Action::make('exportExcel')
+                    ->label('Excel (Semua)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    // Pastikan hanya Admin/Operator yang bisa ekspor massal
+                    // ->visible(fn () => Auth::user()->hasAnyRole(['super_admin', 'admin', 'operator', 'tenaga kependidikan', 'kepsek', 'guru']))
+                    ->action(function ($livewire) {
+                        $records = $livewire->getFilteredTableQuery()->get();
+            
+                         return \Maatwebsite\Excel\Facades\Excel::download(
+                                new \App\Exports\FileExport($records), 
+                                'arsip-dokumen-' . now()->format('d-m-Y-Hi') . '.xlsx'
+                            );
+                    }),
             ])
             ->filters([
                 SelectFilter::make('file_category_id')->label('Kategori')->relationship('category', 'nama'),
                 TrashedFilter::make(),
+                Filter::make('created_at')
+                    ->form([
+                        DatePicker::make('created_from')
+                            ->label('Unggah Dari'),
+                        DatePicker::make('created_until')
+                            ->label('Unggah Sampai'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['created_from'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['created_until'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['created_from'] ?? null) {
+                            $indicators[] = 'Dari: ' . \Carbon\Carbon::parse($data['created_from'])->format('d/m/Y');
+                        }
+                        if ($data['created_until'] ?? null) {
+                            $indicators[] = 'Sampai: ' . \Carbon\Carbon::parse($data['created_until'])->format('d/m/Y');
+                        }
+                        return $indicators;
+                    }),
             ])
+           
             ->actions([
                 ActionGroup::make([
                     ViewAction::make(),

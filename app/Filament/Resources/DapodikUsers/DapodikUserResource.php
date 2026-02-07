@@ -131,7 +131,7 @@ class DapodikUserResource extends Resource
                     ->label('Tipe User')
                     ->badge()
                     ->searchable()
-                    ->color('gray')
+                    ->color('info')
                     ->toggleable(),
 
                 TextColumn::make('roles.name')

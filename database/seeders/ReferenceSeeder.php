@@ -20,6 +20,7 @@ class ReferenceSeeder extends Seeder
             PendidikanSeeder::class,
             PekerjaanSeeder::class,
             PenghasilanSeeder::class,
+            PermissionSeeder::class,
         ]);
     }
 }

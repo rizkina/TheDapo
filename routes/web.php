@@ -19,24 +19,39 @@ Route::get('/google-drive/callback', [GoogleDriveController::class, 'callback'])
     ->name('google.drive.callback');
 
 Route::get('/files/{file}/preview', function (File $file) {
-    // Keamanan: Pastikan hanya pemilik atau admin yang bisa lihat
-    if (Auth::user()->cannot('view', $file)) { abort(403, 'Anda tidak memiliki izin untuk melihat file ini.'); }
+    // 1. Keamanan: Cek Policy (Pastikan class FilePolicy sudah benar)
+    if (Auth::user()->cannot('view', $file)) { 
+        abort(403, 'Anda tidak memiliki izin untuk melihat file ini.'); 
+    }
 
+    // 2. Suntikkan Config Google Drive
     GoogleDriveService::applyConfig();
     
     /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
     $disk = Storage::disk('google');
 
+    // 3. Cek apakah file benar-benar ada di Drive
     if (!$disk->exists($file->file_path)) {
         abort(404, 'File tidak ditemukan di Google Drive.');
     }
 
-    $content = $disk->get($file->file_path);
-    $mimeType = $disk->mimeType($file->file_path);
-    return response()->stream(function() use ($disk, $file){
-        echo $disk->get($file->file_path);
-    }, 200, [
-        'Content-Type' => $file->mime_type,
-        'Content-Disposition' => 'inline; filename="' . $file->original_name . '"',
-    ]);
+    // 4. STREAMING RESPONSE (Sangat Ringan Memori)
+    // Kita gunakan readStream agar data mengalir bit demi bit, bukan sekaligus
+    return response()->stream(
+        function () use ($disk, $file) {
+            $stream = $disk->readStream($file->file_path);
+            if ($stream) {
+                fpassthru($stream); // Mengalirkan data langsung ke output browser
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
+            }
+        }, 
+        200, 
+        [
+            'Content-Type' => $file->mime_type ?? 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $file->original_name . '"',
+            'Cache-Control' => 'no-cache, must-revalidate',
+        ]
+    );
 })->name('file.preview')->middleware(['auth']);

@@ -54,8 +54,5 @@ class DatabaseSeeder extends Seeder
         $this->command->info('Username : admin');
         $this->command->info('Password : password123');
         $this->command->info('-----------------------------------------');
-        $this->call([
-            PermissionSeeder::class,
-        ]);
     }
 }
