@@ -34,7 +34,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
-
+use Filament\Tables;
 
 class SiswaResource extends Resource
 {
@@ -248,7 +248,20 @@ class SiswaResource extends Resource
                     ->label('Excel')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
-                    ->action(fn () => Excel::download(new SiswaExport(static::getEloquentQuery()->get()), 'data-siswa.xlsx')),
+                    ->action(function ($livewire) {
+                        $records = $livewire->getFilteredTableQuery()->get();
+
+                        if ($records->isEmpty()) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Gagal')
+                                ->body('Tidak ada data untuk diunduh.')
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+                        $namaFile = 'Siswa_' . now()->format('dmY_His') . '.xlsx';
+                        return Excel::download(new SiswaExport($records), $namaFile);
+                    })
             ])
             ->bulkActions([
                 BulkActionGroup::make([
@@ -273,6 +286,22 @@ class SiswaResource extends Resource
                             );
                         }),
                 ])
+            ])
+            ->filters([
+                Tables\Filters\TrashedFilter::make(),
+
+            Tables\Filters\SelectFilter::make('nama_rombel')
+                ->label('Kelas')
+                ->options(function () {
+                    return Siswa::query()
+                        ->whereNotNull('nama_rombel')
+                        ->distinct()
+                        ->orderBy('nama_rombel', 'asc')
+                        ->pluck('nama_rombel', 'nama_rombel')
+                        ->toArray();
+                })
+                ->searchable()
+                ->preload(),
             ])
 
             ->actions([
@@ -318,10 +347,18 @@ class SiswaResource extends Resource
         $user = Auth::user();
 
         $query = parent::getEloquentQuery()
-            ->with(['rombels', 'sekolah', 'agama']) 
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
+        ->with([
+            'rombels', 
+            'sekolah', 
+            'agama',
+            'pekerjaanAyah', 'pekerjaanIbu', 'pekerjaanWali',
+            'pendidikanAyah', 'pendidikanIbu', 'pendidikanWali',
+            'penghasilanAyah', 'penghasilanIbu', 'penghasilanWali',
+        ]) 
+        ->withoutGlobalScopes([
+            SoftDeletingScope::class,
+        ]);
+
 
             // 2. Proteksi: Jika user belum login, jangan tampilkan apa-apa
             if (!$user) {
