@@ -267,6 +267,11 @@ class PtkResource extends Resource
         $user = Auth::user();
 
         $query = parent::getEloquentQuery()
+            ->with([
+                'pendidikanTerakhir',
+                'sekolah',
+                'agama',
+            ])
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);

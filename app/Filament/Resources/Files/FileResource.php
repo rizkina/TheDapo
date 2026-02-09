@@ -266,9 +266,11 @@ class FileResource extends Resource
     }
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery()->with(['category', 'user.roles'])->withoutGlobalScopes([
-            SoftDeletingScope::class,
-        ]);
+        $query = parent::getEloquentQuery()
+            ->with(['category', 'user.roles'])
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
         $user = Auth::user();
         if ($user->hasAnyRole(['super_admin', 'admin', 'operator'])) {
             return $query;
