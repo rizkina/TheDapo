@@ -245,11 +245,6 @@ class RombelResource extends Resource
 
     }
 
-    public function pembelajarans(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->hasMany(Pembelajaran::class, 'rombel_id');
-    }
-
     public static function getRelations(): array
     {
         return [
@@ -277,7 +272,7 @@ class RombelResource extends Resource
 
      public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::count();
+        return static::getEloquentQuery()->count();
     }
 
     public static function getNavigationBadgeColor(): ?string

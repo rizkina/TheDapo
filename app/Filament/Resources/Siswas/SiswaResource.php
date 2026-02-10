@@ -322,7 +322,7 @@ class SiswaResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::count();
+        return static::getEloquentQuery()->count();
     }
 
     // Opsional: Memberi warna pada badge

@@ -33,6 +33,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Enums\FiltersLayout;
 use UnitEnum;
+use Illuminate\Support\Facades\Auth;
 
 class DapodikUserResource extends Resource
 {
@@ -193,15 +194,14 @@ class DapodikUserResource extends Resource
                 ]),
             ]);
     }
-
-
+    
     public static function getRelations(): array
     {
         return [
             //
         ];
     }
-
+    
     public static function getPages(): array
     {
         return [
@@ -211,18 +211,46 @@ class DapodikUserResource extends Resource
             'edit' => EditDapodikUser::route('/{record}/edit'),
         ];
     }
+    
+    public static function getEloquentQuery(): Builder
+    {
+       $query = parent::getEloquentQuery()
+        ->with([
+            'sekolah',
+            'ptk',
+            'siswa'
+        ])
+        ->withoutGlobalScope([
+            SoftDeletingScope::class,
+        ]);
+
+        /** @var \App\Models\Dapodik_user $user */
+        $user = Auth::user();
+        if (!$user) {
+            return $query->whereRaw('1=0');
+        }
+        if ($user->hasAnyRole(['super_admin', 'admin', 'operator'])) {
+            return $query;
+        }
+        return $query->where('id', $user->id);
+    } 
 
     public static function getRecordRouteBindingEloquentQuery(): Builder
     {
         return parent::getRecordRouteBindingEloquentQuery()
-            ->withoutGlobalScopes([
+        ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
     }
 
     public static function getNavigationBadge(): ?string
     {
-        return static::getModel()::count();
+        /** @var \App\Models\Dapodik_User $user */
+        $user = Auth::user();
+        if ($user->hasAnyRole(['super_admin', 'admin', 'operator'])) {
+            return static::getModel()::count();
+        }
+        return null;
     }
 
     // Opsional: Memberi warna pada badge
