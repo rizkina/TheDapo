@@ -32,6 +32,8 @@ class AppPanelProvider extends PanelProvider
             ->login(Login::class)
             // ->sidebarCollapsibleOnDesktop()
             ->sidebarFullyCollapsibleOnDesktop()
+            ->databaseNotifications()
+            // ->databaseNotificationsPolling('30s')
             ->colors([
                 'primary' => Color::Amber,
             ])
