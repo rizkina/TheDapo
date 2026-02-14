@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -25,9 +26,9 @@ return new class extends Migration
             $table->timestamps();
 
             // Mencegah duplikasi siswa di rombel yang sama
-            $table->unique(['rombel_id', 'peserta_didik_id'], 'unique_siswa_rombel');
-
+            $table->unique(['rombel_id', 'peserta_didik_id'], 'unique_siswa_rombel');          
         });
+        DB::statement('CREATE INDEX idx_active_rombel_members ON anggota__rombels (rombel_id, peserta_didik_id) WHERE deleted_at IS NULL');
     }
 
     /**

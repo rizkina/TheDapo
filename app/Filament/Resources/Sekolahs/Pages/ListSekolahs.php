@@ -37,54 +37,31 @@ class ListSekolahs extends ListRecords
                 ->modalHeading('Konfirmasi Sinkronisasi')
                 ->modalDescription('Sistem akan memastikan koneksi ke server Dapodik aktif sebelum menarik data.')
                 ->action(function (DapodikService $service) {
-                    // 1. Cek apakah ada konfigurasi yang aktif di database
+
                     $config = DapodikConf::where('is_active', true)->first();
-
-                    if (!$config) {
-                        Notification::make()
-                            ->title('Gagal: Konfigurasi Tidak Ada')
-                            ->body('Silakan buat dan aktifkan konfigurasi Dapodik terlebih dahulu di menu Settings.')
-                            ->danger()
-                            ->persistent()
-                            ->send();
-                        return; // Hentikan proses
-                    }
-
-                    // 2. Cek Koneksi secara real-time (Ping)
-                    $test = $service->testConnection(
-                        $config->base_url, 
-                        $config->token, 
-                        $config->npsn
-                    );
-
+                    
+                    // Test koneksi dulu
+                    $test = $service->testConnection($config->base_url, $config->token, $config->npsn);
                     if (!$test['success']) {
-                        Notification::make()
-                            ->title('Gagal: Koneksi Terputus')
-                            ->body('Tidak dapat menjangkau server Dapodik. Pastikan aplikasi Dapodik lokal sedang terbuka dan IP diizinkan. Detail: ' . $test['message'])
-                            ->danger()
-                            ->persistent()
-                            ->send();
-                        return; // Hentikan proses
+                        Notification::make()->title('Koneksi Gagal')->danger()->send();
+                        return;
                     }
 
-                    // 3. Jika lolos semua cek, jalankan Job
-                    // Karena data sekolah hanya 1 record, gunakan dispatchSync agar instan
-                    try {
-                        SyncSekolahJob::dispatchSync();
-
-                        Notification::make()
-                            ->title('Berhasil!')
-                            ->body('Data profil sekolah berhasil diperbarui dari Dapodik.')
-                            ->success()
-                            ->send();
-                    } catch (\Exception $e) {
-                        Notification::make()
-                            ->title('Terjadi Kesalahan Sistem')
-                            ->body($e->getMessage())
-                            ->danger()
-                            ->send();
+                    // Jalankan di background
+                    SyncSekolahJob::dispatchSync(Auth::id()); 
+                    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                        // start /B menjalankan perintah di background tanpa membuka jendela CMD baru
+                        // --stop-when-empty membuat worker mati otomatis jika antrean sudah bersih (hemat RAM)
+                        pclose(popen("start /B php " . base_path('artisan') . " queue:work redis --stop-when-empty", "r"));
                     }
-                }),
+
+                    // Beri notifikasi ke database bahwa proses sudah dikirim ke antrean
+                    Notification::make()
+                        ->title('Sinkronisasi Dimulai')
+                        ->body('Data sedang diproses oleh Redis. Cek lonceng notifikasi sebentar lagi.')
+                        ->info()
+                        ->sendToDatabase(Auth::user());
+                })
         ];
     }
 }

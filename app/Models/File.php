@@ -22,6 +22,26 @@ class File extends Model
         'disk',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'size' => 'integer',
+        ];
+    }
+
+    /**
+     * Accessor untuk menampilkan ukuran file yang manusiawi
+     */
+    public function getFormattedSizeAttribute(): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $bytes = max($this->size, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+
+        return round($bytes / (1024 ** $pow), 2) . ' ' . $units[$pow];
+    }
+
     public function user()
     {
         return $this->belongsTo(Dapodik_User::class, 'user_id');

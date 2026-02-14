@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Sekolah;
 use App\Models\DapodikConf;
+use App\Models\Dapodik_User; 
 use App\Services\DapodikService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,37 +12,43 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Filament\Notifications\Notification;
 
 class SyncSekolahJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    // Tentukan waktu timeout (misal 5 menit)
     public $timeout = 300;
+    protected $userId;
+
+    public function __construct($userId = null)
+    {
+        $this->userId = $userId;
+    }
 
     public function handle(DapodikService $service): void
     {
         Log::info("Memulai sinkronisasi data Sekolah dari Dapodik...");
+
+        // PERBAIKAN: Ambil recipient dari model Dapodik_User
+        $recipient = $this->userId ? Dapodik_User::find($this->userId) : null;
 
         try {
             $res = $service->fetchData('getSekolah');
 
             if ($res && isset($res['rows'])) {
                 $dataRows = $res['rows'];
-
-                // Mendeteksi apakah 'rows' berupa object tunggal atau array
                 $row = isset($dataRows['sekolah_id']) ? $dataRows : ($dataRows[0] ?? null);
 
                 if ($row) {
-                    // 1. UPDATE atau CREATE (Menggunakan updateOrCreate lebih aman daripada Delete-Create)
-                    $sekolah = \App\Models\Sekolah::updateOrCreate(
-                        ['id' => $row['sekolah_id']], // Kunci pencarian
+                    $sekolah = Sekolah::updateOrCreate(
+                        ['id' => $row['sekolah_id']], // Kunci UUID
                         [
                             'npsn'                      => $row['npsn'],
                             'nss'                       => $row['nss'] ?? null,
                             'nama'                      => $row['nama'],
-                            'bentuk_pendidikan_id_str'  => $row['bentuk_pendidikan_id_str'] ?? null,
-                            'status_sekolah_str'        => $row['status_sekolah_str'] ?? null,
+                            'bentuk_pendidikan_id_str'  => $row['bentuk_pendidikan_id_str'] ?? null, // TAMBAHKAN INI
+                            'status_sekolah_str'        => $row['status_sekolah_str'] ?? null,   // TAMBAHKAN INI
                             'alamat_jalan'              => $row['alamat_jalan'] ?? null,
                             'rt'                        => $row['rt'] ?? null,
                             'rw'                        => $row['rw'] ?? null,
@@ -62,23 +69,32 @@ class SyncSekolahJob implements ShouldQueue
                         ]
                     );
 
-                    // 2. LOGIKA "HANYA 1 RECORD": 
-                    // Hapus sekolah lain yang ID-nya TIDAK SAMA dengan yang baru saja ditarik
-                    // Ini jauh lebih aman daripada menghapus semua di awal.
-                    \App\Models\Sekolah::where('id', '!=', $sekolah->id)->forceDelete();
+                    // Pastikan hanya 1 record
+                    Sekolah::where('id', '!=', $sekolah->id)->forceDelete();
 
-                    // 3. Update waktu sinkronisasi terakhir
-                    \App\Models\DapodikConf::where('is_active', true)->update([
-                        'last_sync_at' => now()
-                    ]);
-                    
-                    Log::info("Sinkronisasi Sekolah Berhasil: " . $sekolah->nama);
-                } else {
-                    Log::warning("Sinkronisasi Gagal: Format 'rows' tidak dikenali atau kosong.");
+                    // Update last sync
+                    DapodikConf::where('is_active', true)->update(['last_sync_at' => now()]);
+
+                    if ($recipient) {
+                        Notification::make()
+                            ->title('Sinkronisasi Berhasil')
+                            ->body("Data sekolah '{$sekolah->nama}' diperbarui.")
+                            ->success() 
+                            ->icon('heroicon-o-check-circle')
+                            ->sendToDatabase($recipient);
+                    }
                 }
             }
         } catch (\Exception $e) {
             Log::error("Gagal Sync Sekolah: " . $e->getMessage());
+            if ($recipient) {
+                Notification::make()
+                    ->title('Sinkronisasi Gagal')
+                    ->body("Galat : {$e->getMessage()}")
+                    ->danger()
+                    ->icon('heroicon-o-x-circle')
+                    ->sendToDatabase($recipient);
+            }
         }
     }
 }

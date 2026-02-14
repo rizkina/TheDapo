@@ -33,7 +33,7 @@ class AppPanelProvider extends PanelProvider
             // ->sidebarCollapsibleOnDesktop()
             ->sidebarFullyCollapsibleOnDesktop()
             ->databaseNotifications()
-            // ->databaseNotificationsPolling('30s')
+            ->databaseNotificationsPolling('30s')
             ->colors([
                 'primary' => Color::Amber,
             ])
