@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Siswa;
 use App\Models\DapodikConf;
+use App\Models\Dapodik_User;
 use App\Services\DapodikService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,16 +12,24 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Filament\Notifications\Notification;
 
 class SyncSiswaJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 600;
+    protected $userId;
 
-   public function handle(DapodikService $service): void
+    public function __construct($userId = null)
+    {
+        $this->userId = $userId;
+    }
+
+    public function handle(DapodikService $service): void
     {
         Log::info("Memulai Sinkronisasi Siswa Terproteksi...");
+        $recipient = $this->userId ? Dapodik_User::find($this->userId) : null;
 
         try {
             $res = $service->fetchData('getPesertaDidik');
@@ -129,11 +138,26 @@ class SyncSiswaJob implements ShouldQueue
                         'deleted_at' // Sangat penting untuk menghidupkan kembali siswa yang "pindah lalu kembali"
                     ]);
                 }
-
                 Log::info("Sinkronisasi Berhasil. Siswa bertambah/tetap, siswa tidak aktif otomatis masuk Sampah.");
+                if ($recipient) {
+                    Notification::make()
+                        ->title('Sinkronisasi data murid Berhasil')
+                        ->body('Data murid sebanyak '. count($rows) .' diperbarui.')
+                        ->success() 
+                        ->icon('heroicon-o-check-circle')
+                        ->sendToDatabase($recipient);
+                }
             }
         } catch (\Exception $e) {
             Log::error("Gagal Sync Siswa: " . $e->getMessage());
+            if ($recipient) {
+                Notification::make()
+                    ->title('Sinkronisasi data siswa gagal.')
+                    ->body("Galat : {$e->getMessage()}")
+                    ->danger()
+                    ->icon('heroicon-o-x-circle')
+                    ->sendToDatabase($recipient);
+            }
         }
     }
 

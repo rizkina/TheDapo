@@ -36,12 +36,7 @@ class ListDapodikUsers extends ListRecords
                     $config = DapodikConf::where('is_active', true)->first();
                     $test = $service->testConnection($config->base_url, $config->token, $config->npsn);
                     if (!$test['success']) {
-                        Notification::make()
-                            ->title('Gagal: Koneksi Terputus')
-                            ->body($test['message'])
-                            ->danger()
-                            ->persistent()
-                            ->send();
+                        Notification::make()->title('Koneksi Gagal')->danger()->send();
                         return;
                     }
                     // Masukkan ke antrean Redis
@@ -56,7 +51,7 @@ class ListDapodikUsers extends ListRecords
                         ->title('Proses Dimulai')
                         ->body('Akun sedang dibuat di latar belakang. Silakan tunggu beberapa saat.')
                         ->info()
-                        ->send();
+                        ->sendToDatabase(Auth::user());
                 }),
             Actions\CreateAction::make(),
         ];

@@ -40,12 +40,7 @@ class ListPtks extends ListRecords
                         $test = $service->testConnection($config->base_url, $config->token, $config->npsn);
 
                         if (!$test['success']) {
-                            Notification::make()
-                                ->title('Gagal: Koneksi Terputus')
-                                ->body('Pastikan aplikasi Dapodik lokal aktif. Detail: ' . $test['message'])
-                                ->danger()
-                                ->persistent()
-                                ->send();
+                            Notification::make()->title('Koneksi Gagal')->danger()->send();
                             return;
                         }
 
@@ -57,10 +52,10 @@ class ListPtks extends ListRecords
                             pclose(popen("start /B php " . base_path('artisan') . " queue:work redis --stop-when-empty", "r"));
                         }
                         Notification::make()
-                        ->title('Sinkronisasi Dimulai')
-                        ->body('Data GTK sedang ditarik. Silakan refresh halaman ini dalam beberapa menit.')
-                        ->info()
-                        ->send();
+                            ->title('Sinkronisasi Dimulai')
+                            ->body('Data GTK sedang ditarik. Silakan refresh halaman ini dalam beberapa menit.')
+                            ->info()
+                            ->sendToDatabase(Auth::user());
                 }),
         ];
                     

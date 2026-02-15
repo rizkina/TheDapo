@@ -14,19 +14,33 @@ return new class extends Migration
         Schema::create('file_categories', function (Blueprint $table) {
             $table->id();
             $table->string('nama')->unique();
-            $table->string('slug')->unique();
+            
+            // Slug digunakan untuk nama folder di Google Drive
+            // Kita beri index agar pencarian folder saat upload sangat cepat
+            $table->string('slug')->unique()->index(); 
+            
+            // Tambahkan Soft Deletes agar konsisten dengan sistem arsip kita
+            $table->softDeletes(); 
             $table->timestamps();
         });
 
-         Schema::create('file_category_role', function (Blueprint $table) {
+        Schema::create('file_category_role', function (Blueprint $table) {
             // Relasi ke file_categories
-            $table->foreignId('file_category_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('file_category_id')
+                ->constrained()
+                ->cascadeOnDelete();
             
-            // Relasi ke roles (tabel bawaan Spatie)
-            $table->foreignId('role_id')->constrained()->cascadeOnDelete();
+            // Relasi ke roles (Spatie). 
+            // Kita sebutkan 'roles' secara eksplisit untuk berjaga-jaga
+            $table->foreignId('role_id')
+                ->constrained('roles') 
+                ->cascadeOnDelete();
 
-            // Index unik agar satu role tidak terdaftar ganda di kategori yang sama
-            $table->unique(['file_category_id', 'role_id']);
+            // Indeks unik untuk mencegah role ganda di satu kategori
+            $table->unique(['file_category_id', 'role_id'], 'unique_cat_role');
+            
+            // Optimasi: Indeks kebalikan untuk query: "Kategori apa saja yang bisa diakses role X?"
+            $table->index('role_id');
         });
     }
 

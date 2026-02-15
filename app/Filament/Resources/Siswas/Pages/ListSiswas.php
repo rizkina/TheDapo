@@ -37,12 +37,7 @@ class ListSiswas extends ListRecords
                     $test = $service->testConnection($config->base_url, $config->token, $config->npsn);
 
                     if (!$test['success']) {
-                        Notification::make()
-                            ->title('Gagal: Koneksi Terputus')
-                            ->body($test['message'])
-                            ->danger()
-                            ->persistent()
-                            ->send();
+                        Notification::make()->title('Koneksi Gagal')->danger()->send();
                         return;
                     }
 
@@ -59,7 +54,7 @@ class ListSiswas extends ListRecords
                         ->title('Antrean Dimulai')
                         ->body('Data siswa sedang diproses oleh Aplikasi. Silakan refresh halaman ini beberapa saat lagi.')
                         ->info()
-                        ->send();
+                        ->sendToDatabase(Auth::user());
                 }),
         ];
     }

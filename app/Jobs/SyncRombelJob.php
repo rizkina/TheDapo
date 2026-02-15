@@ -24,7 +24,7 @@ class SyncRombelJob implements ShouldQueue
 
     public $timeout = 1200; // 20 menit karena prosesnya berat
 
-    public $userId;
+    protected $userId;
     public function __construct($userId)
     {
         $this->userId = $userId;
@@ -33,6 +33,8 @@ class SyncRombelJob implements ShouldQueue
     public function handle(DapodikService $service): void
     {
         Log::info("Memulai Sinkronisasi Rombel Lengkap...");
+        $recipient = $this->userId ? Dapodik_User::find($this->userId) : null;
+
         $totalRombel = 0;
 
         try {
@@ -114,25 +116,34 @@ class SyncRombelJob implements ShouldQueue
                         });
                         $recipient = Dapodik_User::find($this->userId);
                 
-                            if ($recipient) {
-                                Notification::make()
-                                    ->title('Sinkronisasi Rombel Selesai')
-                                    ->body("Berhasil menarik $totalRombel data Rombongan Belajar beserta Anggota dan Pembelajarannya.")
-                                    ->success()
-                                    ->icon('heroicon-o-check-circle')
-                                    ->sendToDatabase($recipient); // Notifikasi dikirim ke database
-                            }
-                            
-                            Log::info("Sinkronisasi Selesai.");
+                        
+                        Log::info("Sinkronisasi Selesai." . $row['nama'] . "selesai");
+                        
                     } catch (\Exception $rowException) {
                         Log::error("Gagal memproses Rombel: " . $row['nama'] . ". Error: " . $rowException->getMessage());
                         continue; // Lanjut ke rombel berikutnya
                     }
                 }
                 Log::info("Sinkronisasi Rombel Selesai.");
+                if ($recipient) {
+                    Notification::make()
+                        ->title('Sinkronisasi Rombel Selesai')
+                        ->body("Berhasil menarik $totalRombel data Rombongan Belajar beserta Anggota dan Pembelajarannya.")
+                        ->success()
+                        ->icon('heroicon-o-check-circle')
+                        ->sendToDatabase($recipient); // Notifikasi dikirim ke database
+                }
             }
         } catch (\Exception $e) {
             Log::error("Koneksi API Gagal: " . $e->getMessage());
+            if ($recipient) {
+                Notification::make()
+                    ->title('Sinkronisasi data rombel gagal.')
+                    ->body("Galat : {$e->getMessage()}")
+                    ->danger()
+                    ->icon('heroicon-o-x-circle')
+                    ->sendToDatabase($recipient);
+            }
         }
     }
 }

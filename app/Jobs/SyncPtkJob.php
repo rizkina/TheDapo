@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Ptk;
+use App\Models\Dapodik_User;
 use App\Models\DapodikConf;
 use App\Services\DapodikService;
 use Illuminate\Bus\Queueable;
@@ -11,16 +12,24 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Filament\Notifications\Notification;
 
 class SyncPtkJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 600;
+    protected $userId;
+
+    public function __construct($userId = null)
+    {
+        $this->userId = $userId; 
+    }
 
     public function handle(DapodikService $service): void
     {
         Log::info("Memulai Sinkronisasi GTK...");
+        $recipient = $this->userId ? Dapodik_User::find($this->userId) : null;
 
         try {
             // fetchData akan memanggil http://localhost:5774/WebService/getGtk?npsn=...
@@ -117,9 +126,25 @@ class SyncPtkJob implements ShouldQueue
 
                 DapodikConf::where('is_active', true)->update(['last_sync_at' => now()]);
                 Log::info("Sinkronisasi GTK Berhasil. " . count($rows) . " data diproses.");
+                if ($recipient) {
+                        Notification::make()
+                            ->title('Sinkronisasi data GTK Berhasil')
+                            ->body('Data GTK sebanyak '. count($rows) .' diperbarui.')
+                            ->success() 
+                            ->icon('heroicon-o-check-circle')
+                            ->sendToDatabase($recipient);
+                    }
             }
         } catch (\Exception $e) {
             Log::error("Gagal Sync GTK: " . $e->getMessage());
+            if ($recipient) {
+                Notification::make()
+                    ->title('Sinkronisasi data GTK gagal.')
+                    ->body("Galat : {$e->getMessage()}")
+                    ->danger()
+                    ->icon('heroicon-o-x-circle')
+                    ->sendToDatabase($recipient);
+            }
         }
     }
 
