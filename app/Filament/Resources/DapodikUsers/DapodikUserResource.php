@@ -218,9 +218,10 @@ class DapodikUserResource extends Resource
         ->with([
             'sekolah',
             'ptk',
-            'siswa'
+            'siswa',
+            'roles'
         ])
-        ->withoutGlobalScope([
+        ->withoutGlobalScopes([
             SoftDeletingScope::class,
         ]);
 
