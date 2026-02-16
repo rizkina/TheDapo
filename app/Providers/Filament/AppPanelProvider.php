@@ -46,6 +46,7 @@ class AppPanelProvider extends PanelProvider
             ->widgets([
                 AccountWidget::class,
                 FilamentInfoWidget::class,
+                \App\Filament\Widgets\AnnouncementWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
