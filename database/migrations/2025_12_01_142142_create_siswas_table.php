@@ -21,6 +21,7 @@ return new class extends Migration
             $table->date('tanggal_masuk_sekolah')->nullable();
             $table->string('sekolah_asal')->nullable();
             $table->string('nama')->index();
+            $table->string('foto')->nullable();
             $table->string('nisn', 10)->nullable()->unique();
             $table->char('jenis_kelamin', 1)->nullable();
             $table->string('nik', 16)->nullable()->index();

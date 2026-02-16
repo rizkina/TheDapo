@@ -35,6 +35,8 @@ use Filament\Actions\Action;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables;
+use Filament\Forms\Components\FileUpload;
+use Filament\Tables\Columns\ImageColumn;
 
 class SiswaResource extends Resource
 {
@@ -53,6 +55,18 @@ class SiswaResource extends Resource
     {
         return $schema
             ->components([
+                Section::make('Pas Foto')
+                    ->schema([
+                        FileUpload::make('foto')
+                            ->label('Foto Profil')
+                            ->image() // Pastikan hanya gambar
+                            ->avatar() // Membuat bentuk lingkaran (khusus foto profil)
+                            ->imageEditor() // Memungkinkan admin melakukan crop/resize
+                            ->circleCropper()
+                            ->directory('foto-siswa') // Tersimpan di storage/app/public/foto-siswa
+                            ->disk('public') // Gunakan disk lokal
+                            ->maxSize(1024), // Batasi 1MB agar server tetap ringan
+                    ])->columnSpan(1),
                 // SEKSI 1: IDENTITAS (READ ONLY)
                 Section::make('Identitas Utama (Dapodik)')
                     ->description('Data ini dikunci dan hanya bisa diperbarui melalui Sinkronisasi Dapodik.')
@@ -199,6 +213,11 @@ class SiswaResource extends Resource
     {
         return $table
             ->columns([
+                ImageColumn::make('foto')
+                    ->label('')
+                    ->circular() // Bentuk lingkaran
+                    ->defaultImageUrl(url('/images/default-avatar.png')),
+                    
                 TextColumn::make('nisn')
                     ->label('NISN')
                     ->copyable()

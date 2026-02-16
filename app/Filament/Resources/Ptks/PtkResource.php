@@ -29,6 +29,8 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Schemas\Components\Grid;
 use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Components\FileUpload;
+use Filament\Tables\Columns\ImageColumn;
 
 class PtkResource extends Resource
 {
@@ -50,6 +52,19 @@ class PtkResource extends Resource
         // return PtkForm::configure($schema);
         return $schema
             ->components([
+                Section::make('Pas Foto')
+                    ->schema([
+                        FileUpload::make('foto')
+                            ->label('Foto Profil')
+                            ->image() // Pastikan hanya gambar
+                            ->avatar() // Membuat bentuk lingkaran (khusus foto profil)
+                            ->imageEditor() // Memungkinkan admin melakukan crop/resize
+                            ->circleCropper()
+                            ->directory('foto-ptk') // Tersimpan di storage/app/public/foto-siswa
+                            ->disk('public') // Gunakan disk lokal
+                            ->maxSize(1024), // Batasi 1MB agar server tetap ringan
+                    ])->columnSpan(1),
+
                 Section::make('Informasi Utama')
                     ->description('Data ini sinkron dengan Dapodik.')
                     ->schema([
@@ -208,6 +223,10 @@ class PtkResource extends Resource
         // return PtksTable::configure($table);
         return $table
             ->columns([
+                ImageColumn::make('foto')
+                    ->label('')
+                    ->circular() // Bentuk lingkaran
+                    ->defaultImageUrl(url('/images/default-avatar.png')),
                 TextColumn::make('nama')
                     ->searchable()
                     ->sortable(),

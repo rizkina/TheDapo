@@ -20,6 +20,7 @@ class Ptk extends Model
         'ptk_induk',
         'tanggal_surat_tugas',
         'nama',
+        'foto',
         'jenis_kelamin',
         'tempat_lahir',
         'tanggal_lahir',

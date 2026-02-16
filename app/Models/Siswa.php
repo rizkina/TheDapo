@@ -25,6 +25,7 @@ class Siswa extends Model
         'tanggal_masuk_sekolah',
         'sekolah_asal',
         'nama',
+        'foto',
         'nisn',
         'jenis_kelamin',
         'nik',

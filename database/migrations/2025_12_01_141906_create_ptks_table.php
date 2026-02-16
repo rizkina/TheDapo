@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('ptk_induk', 1)->nullable(); // 1 = Induk, 0 = Non Induk
             $table->date('tanggal_surat_tugas')->nullable();
             $table->string('nama')->index();
+            $table->string('foto')->nullable();
             $table->char('jenis_kelamin', 1)->nullable();
             $table->string('tempat_lahir')->nullable();
             $table->date('tanggal_lahir')->nullable();
