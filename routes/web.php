@@ -6,10 +6,12 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use App\Models\File;
 use App\Services\GoogleDriveService;
+use App\Http\Controllers\LandingController;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// Route::get('/', function () {
+//     return view('welcome');
+// });
+Route::get('/', [LandingController::class, 'index'])->name('landing');
 
 Route::get('/google-drive/connect', [GoogleDriveController::class, 'connect'])
     ->name('google.drive.connect')
