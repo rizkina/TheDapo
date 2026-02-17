@@ -37,6 +37,8 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Tables;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Columns\ImageColumn;
+use Filament\Infolists\Components\ImageEntry;
+use Filament\Infolists\Components\TextEntry;
 
 class SiswaResource extends Resource
 {
@@ -201,7 +203,98 @@ class SiswaResource extends Resource
 
     public static function infolist(Schema $schema): Schema
     {
-        return SiswaInfolist::configure($schema);
+        // return SiswaInfolist::configure($schema);
+        return $schema
+        ->schema([
+            Section::make('Foto Profil')
+                ->schema([
+                    ImageEntry::make('foto')
+                        ->label('')
+                        ->circular()
+                        ->disk('public')
+                        ->height(150),
+                ])->columnSpan(1),
+            
+            Section::make('Identitas Utama (Dapodik)')
+                ->description('Data ini dikunci dan hanya bisa diperbarui melalui Sinkronisasi Dapodik.')
+                ->schema([
+                    TextEntry::make('nama'),
+                    TextEntry::make('nisn'),
+                    TextEntry::make('nipd')->label('NIS'),
+                    TextEntry::make('nik')->label('NIK'),
+                    TextEntry::make('tempat_lahir'),
+                    TextEntry::make('tanggal_lahir')->date('d F Y'),
+                    TextEntry::make('nama_rombel')->label('Kelas Saat Ini'),
+                ])->columns(2),
+            
+            Section::make('Data Pelengkap Siswa')
+                    ->description('Data di bawah ini diperbolehkan untuk diperbarui secara lokal.')
+                    ->schema([
+                        // Agama (Editable)
+                        TextEntry::make('agama.nama')
+                            ->label('Agama'),
+                        TextEntry::make('nomor_telepon_seluler')
+                            ->label('No. Telepon Seluler'),
+                        TextEntry::make('nomor_telepon_rumah')
+                            ->label('No. Telepon Rumah'),
+                        TextEntry::make('email')
+                            ->label('Email'),
+                        TextEntry::make('anak_keberapa')
+                            ->label('Anak Ke-'),
+                        TextEntry::make('tinggi_badan')
+                            ->label('Tinggi Badan (cm)'),
+                        TextEntry::make('berat_badan')
+                            ->label('Berat Badan (kg)'),
+                        TextEntry::make('kebutuhan_khusus')
+                            ->label('Kebutuhan Khusus'),                        
+                    ])->columns(2),
+
+                Section::make('Data Orang Tua')
+                    ->description('Data tambahan yang dapat diisi sesuai kebutuhan.')
+                    ->schema([
+                        // Data Orang Tua (Editable)
+                        TextEntry::make('nama_ayah'),
+                        TextEntry::make('nik_ayah')
+                            ->label('NIK Ayah'),
+                        TextEntry::make('tahun_lahir_ayah')
+                            ->label('Tahun Lahir Ayah'),
+                        TextEntry::make('pekerjaanAyah.nama')
+                            ->label('Pekerjaan Ayah'),
+                        TextEntry::make('pendidikanAyah.nama')
+                            ->label('Pendidikan Ayah'),
+                           
+                        TextEntry::make('penghasilanAyah.nama')
+                            ->label('Penghasilan Ayah'),
+                            
+                        TextEntry::make('nama_ibu'),
+                        TextEntry::make('nik_ibu')
+                            ->label('NIK Ibu'),
+                        TextEntry::make('tahun_lahir_ibu')
+                            ->label('Tahun Lahir Ibu'),
+                        TextEntry::make('pekerjaanIbu.nama')
+                            ->label('Pekerjaan Ibu'),
+                        TextEntry::make('pendidikanIbu.nama')
+                            ->label('Pendidikan Ibu'),
+                        TextEntry::make('penghasilanIbu.nama')
+                            ->label('Penghasilan Ibu'),
+                    ])->columns(2),
+                Section::make('Data Wali')
+                    ->description('Diisi jika siswa memiliki wali atau tinggal dengan selain Ayah/Ibu.')
+                    ->schema([
+                        TextEntry::make('nama_wali'),
+                        TextEntry::make('nik_wali')
+                            ->label('NIK Wali'),
+                        TextEntry::make('tahun_lahir_wali')
+                            ->label('Tahun Lahir Wali'),
+                        TextEntry::make('pekerjaanWali.nama')
+                            ->label('Pekerjaan Wali'),
+                        TextEntry::make('pendidikanWali.nama')
+                            ->label('Pendidikan Wali'),
+                        TextEntry::make('penghasilanWali.nama')
+                            ->label('Penghasilan Wali'),
+                    ])
+                    ->collapsed()
+        ])->columns(2);
     }
 
     // public static function table(Table $table): Table
@@ -216,7 +309,7 @@ class SiswaResource extends Resource
                 ImageColumn::make('foto')
                     ->label('')
                     ->circular() // Bentuk lingkaran
-                    ->defaultImageUrl(url('/images/default-avatar.png')),
+                    ->defaultImageUrl(url('/images/avatar.png')),
                     
                 TextColumn::make('nisn')
                     ->label('NISN')

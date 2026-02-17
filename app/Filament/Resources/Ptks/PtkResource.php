@@ -24,6 +24,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
 // use Filament\Infolists\Infolist;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -31,6 +32,7 @@ use Filament\Schemas\Components\Grid;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Columns\ImageColumn;
+use Filament\Infolists\Components\ImageEntry;
 
 class PtkResource extends Resource
 {
@@ -108,6 +110,14 @@ class PtkResource extends Resource
         // return PtkInfolist::configure($schema);
         return $schema
         ->schema([
+            Section::make('Foto Profil')
+                ->schema([
+                    ImageEntry::make('foto')
+                        ->label('')
+                        ->circular()
+                        ->disk('public')
+                        ->height(150),
+                ])->columnSpan(1),
             // SEKSI 1: IDENTITAS UTAMA
             Section::make('Identitas Pegawai')
                 ->icon('heroicon-m-user')
@@ -226,7 +236,7 @@ class PtkResource extends Resource
                 ImageColumn::make('foto')
                     ->label('')
                     ->circular() // Bentuk lingkaran
-                    ->defaultImageUrl(url('/images/default-avatar.png')),
+                    ->defaultImageUrl(url('/images/avatar.png')),
                 TextColumn::make('nama')
                     ->searchable()
                     ->sortable(),
@@ -258,6 +268,7 @@ class PtkResource extends Resource
             ->actions([
                 ActionGroup::make([
                     ViewAction::make(),
+                    EditAction::make(),
                     // Tambahkan EditAction jika suatu saat Anda menambah field lokal (seperti No HP)
                 ]),
             ]);
@@ -276,7 +287,7 @@ class PtkResource extends Resource
             'index' => ListPtks::route('/'),
             // 'create' => CreatePtk::route('/create'),
             'view' => ViewPtk::route('/{record}'),
-            // 'edit' => EditPtk::route('/{record}/edit'),
+            'edit' => EditPtk::route('/{record}/edit'),
         ];
     }
 
@@ -311,7 +322,6 @@ class PtkResource extends Resource
                 if (!$user->ptk_id) {
                     return $query->whereRaw('1 = 0');
                 }
-
                 return $query->where('id', $user->ptk_id);
             }
 
@@ -332,10 +342,10 @@ class PtkResource extends Resource
         return false;
     }
 
-    public static function canEdit($record): bool
-    {
-        return false;
-    }
+    // public static function canEdit($record): bool
+    // {
+    //     return true;
+    // }
 
     public static function canDelete($record): bool
     {
