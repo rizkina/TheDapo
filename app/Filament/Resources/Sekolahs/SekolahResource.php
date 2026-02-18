@@ -2,13 +2,10 @@
 
 namespace App\Filament\Resources\Sekolahs;
 
-// use App\Filament\Resources\Sekolahs\Pages\CreateSekolah;
-// use App\Filament\Resources\Sekolahs\Pages\EditSekolah;
 use App\Filament\Resources\Sekolahs\Pages\ListSekolahs;
 use App\Filament\Resources\Sekolahs\Pages\ViewSekolah;
 use App\Filament\Resources\Sekolahs\Schemas\SekolahForm;
 use App\Filament\Resources\Sekolahs\Schemas\SekolahInfolist;
-use App\Filament\Resources\Sekolahs\Tables\SekolahsTable;
 use App\Models\Sekolah;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -18,9 +15,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Actions\ViewAction;
-use Filament\Actions\BulkAction;
 use Filament\Tables;
-use Google\Service\Docs\Tab;
 
 class SekolahResource extends Resource
 {

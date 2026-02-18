@@ -19,7 +19,9 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Filament\Pages\Auth\Login;
+use App\Filament\Pages\Auth\EditProfile;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
+use Filament\Navigation\NavigationGroup;
 
 class AppPanelProvider extends PanelProvider
 {
@@ -29,7 +31,23 @@ class AppPanelProvider extends PanelProvider
             ->default()
             ->id('app')
             ->path('app')
+            ->navigationGroups([
+                // Urutan pertama setelah menu tanpa grup (Sekolah, Siswa, dll)
+                NavigationGroup::make()
+                    ->label('Manajemen Pengguna'),
+
+                NavigationGroup::make()
+                    ->label('Manajemen File'),
+
+                NavigationGroup::make()
+                    ->label('Pelindung'),
+
+                NavigationGroup::make()
+                    ->label('Settings')
+                    ->collapsed(), // Opsional: buat grup Settings tertutup secara default
+            ])
             ->login(Login::class)
+            ->profile(EditProfile::class)
             // ->sidebarCollapsibleOnDesktop()
             ->sidebarFullyCollapsibleOnDesktop()
             ->databaseNotifications()

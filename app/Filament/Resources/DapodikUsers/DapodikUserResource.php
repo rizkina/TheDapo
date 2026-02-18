@@ -34,6 +34,8 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Enums\FiltersLayout;
 use UnitEnum;
 use Illuminate\Support\Facades\Auth;
+use Filament\Actions\Action;
+use Illuminate\Support\Facades\Hash;
 
 class DapodikUserResource extends Resource
 {
@@ -142,14 +144,15 @@ class DapodikUserResource extends Resource
                     ->separator(',')
                     ->toggleable(),
 
+                    
                 TextColumn::make('id')
                     ->label('UUID User')
                     ->toggleable(isToggledHiddenByDefault: true),
-
+                    
                 TextColumn::make('ptk_id')
                     ->label('ID PTK')
                     ->toggleable(isToggledHiddenByDefault: true),
-
+                    
                 TextColumn::make('created_at')
                     ->label('Dibuat Pada')
                     ->dateTime('d M Y')
@@ -184,6 +187,33 @@ class DapodikUserResource extends Resource
                 ActionGroup::make([
                     ViewAction::make(),
                     EditAction::make(),
+                    Action::make('resetPassword')
+                        ->label('Reset Password')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalHeading('Reset Password ke Default?')
+                        ->modalDescription('Password akan dikembalikan ke format Tanggal Lahir (dmY). Jika data tanggal lahir tidak ada, default adalah "password123".')
+                        ->action(function (Dapodik_User $record) {
+                            $defaultPassword = 'password123';
+
+                            // Ambil tgl lahir dari relasi PTK atau Siswa
+                            $tglLahir = $record->ptk?->tanggal_lahir ?? $record->siswa?->tanggal_lahir;
+
+                            if ($tglLahir) {
+                                $defaultPassword = $tglLahir->format('dmY');
+                            }
+
+                            $record->update([
+                                'password' => $defaultPassword, // Model casting akan otomatis meng-hash
+                            ]);
+
+                            \Filament\Notifications\Notification::make()
+                                ->title('Password Berhasil Direset')
+                                ->body("Password baru: $defaultPassword")
+                                ->success()
+                                ->send();
+                        }),
                     DeleteAction::make(),
                 ]),
             ])
