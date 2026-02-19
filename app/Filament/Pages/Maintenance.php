@@ -44,6 +44,7 @@ class Maintenance extends Page
             ->requiresConfirmation()
             ->action(function () {
                 try {
+                    Artisan::call('backup:clean');
                     Artisan::call('backup:run', ['--only-db' => true]);
 
                     /** @var FilesystemAdapter $disk */
@@ -79,8 +80,6 @@ class Maintenance extends Page
             ->icon('heroicon-o-trash')
             ->color('danger')
             ->requiresConfirmation()
-            
-            // PERBAIKAN: Gunakan schema() bukan form() untuk menghilangkan warning deprecated
             ->schema([
                 \Filament\Forms\Components\TextInput::make('confirm')
                     ->label('Konfirmasi Teks')
@@ -90,7 +89,30 @@ class Maintenance extends Page
             ])
             
             ->action(function () {
-                // ... logika reset database Anda tetap sama ...
+                DB::transaction(function () {
+                    Storage::disk('public')->deleteDirectory('foto-ptk');
+                    Storage::disk('public')->deleteDirectory('foto-siswa');
+                    Storage::disk('public')->makeDirectory('foto-ptk');
+                    Storage::disk('public')->makeDirectory('foto-siswa');
+
+                    GoogleDriveService::applyConfig();
+                    $google = Storage::disk('google');
+                    foreach (['Siswa', 'Guru', 'Admin', 'Tenaga Kependidikan'] as $folder) {
+                        if ($google->exists($folder)) { $google->deleteDirectory($folder); }
+                    }
+
+                    DB::statement('SET CONSTRAINTS ALL DEFERRED');
+                    $tables = ['pembelajarans', 'anggota__rombels', 'rombels', 'siswas', 'ptks', 'sekolahs', 'files', 'announcements', 'notifications'];
+                    foreach ($tables as $table) { DB::table($table)->truncate(); }
+
+                    Dapodik_User::query()
+                    ->whereDoesntHave('roles', function ($query) {
+                        $query->whereIn('name', ['super_admin', 'admin']);
+                    })
+                    ->where('username', '!=', 'admin') 
+                    ->where('id', '!=', Auth::id())   
+                    ->forceDelete();
+                });
                 Notification::make()->title('Sistem Berhasil Dibersihkan')->danger()->send();
             });
     }
