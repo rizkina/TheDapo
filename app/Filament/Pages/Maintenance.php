@@ -57,10 +57,14 @@ class Maintenance extends Page
                             ->sortByDesc(fn ($file) => $disk->lastModified($file))
                             ->first();
 
+                        // 1. Tentukan Format Nama Baru
+                        // Hasil: backup-TheDapo-20-02-2026-1430.zip
+                        $newFileName = 'backup-' . str(config('app.name'))->slug() . '-' . now()->format('d-m-Y-Hi') . '.zip';
+
                         Notification::make()->title('Backup Berhasil')->success()->send();
 
-                        // SEKARANG TIDAK AKAN MERAH LAGI
-                        return $disk->download($latestFile);
+                        // 2. Berikan parameter kedua pada fungsi download()
+                        return $disk->download($latestFile, $newFileName);
                     }
 
                     throw new \Exception("File backup tidak ditemukan.");
@@ -70,51 +74,101 @@ class Maintenance extends Page
             });
     }
 
-    /**
-     * Fitur 2: Reset / Truncate Database & File (SAFETY MODE)
-     */
-    public function resetDatabaseAction(): Action
+    // --- FITUR 2: WIPE DATABASE SAJA (Aman) ---
+    public function wipeDatabaseAction(): Action
     {
-        return Action::make('resetDatabase')
-            ->label('Wipe / Reset Data')
+        return Action::make('wipeDatabase')
+            ->label('Hapus Database Saja')
+            ->icon('heroicon-o-circle-stack')
+            ->color('warning')
+            ->requiresConfirmation()
+            ->modalHeading('Kosongkan Tabel Database?')
+            ->modalDescription('Tindakan ini menghapus data di tabel (Siswa, PTK, Rombel, dll) tetapi tetap MEMPERTAHANKAN file di Google Drive dan Foto Profil.')
+            ->schema([
+                \Filament\Forms\Components\TextInput::make('confirm')
+                    ->label('Ketik "HAPUS DATA" untuk konfirmasi')
+                    ->required()
+                    ->rules(['in:HAPUS DATA']),
+            ])
+            ->action(fn() => $this->runReset(false));
+    }
+
+    // --- FITUR 3: NUCLEAR RESET (DB + FILES) ---
+    public function nuclearResetAction(): Action
+    {
+        return Action::make('nuclearReset')
+            ->label('Hapus Database & File Fisik')
             ->icon('heroicon-o-trash')
             ->color('danger')
             ->requiresConfirmation()
+            ->modalHeading('Hapus Segalanya?')
+            ->modalDescription('PERINGATAN KRITIS: Tindakan ini akan menghapus data di tabel DAN menghapus seluruh file fisik di Google Drive serta Foto Profil secara permanen!')
             ->schema([
                 \Filament\Forms\Components\TextInput::make('confirm')
-                    ->label('Konfirmasi Teks')
-                    ->placeholder('Ketik: HAPUS SEMUA')
+                    ->label('Ketik "HAPUS SEMUA" untuk konfirmasi')
                     ->required()
                     ->rules(['in:HAPUS SEMUA']),
             ])
-            
-            ->action(function () {
-                DB::transaction(function () {
-                    Storage::disk('public')->deleteDirectory('foto-ptk');
-                    Storage::disk('public')->deleteDirectory('foto-siswa');
-                    Storage::disk('public')->makeDirectory('foto-ptk');
-                    Storage::disk('public')->makeDirectory('foto-siswa');
+            ->action(fn() => $this->runReset(true));
+    }
 
-                    GoogleDriveService::applyConfig();
-                    $google = Storage::disk('google');
-                    foreach (['Siswa', 'Guru', 'Admin', 'Tenaga Kependidikan'] as $folder) {
-                        if ($google->exists($folder)) { $google->deleteDirectory($folder); }
-                    }
+    /**
+     * Logic Inti Pembersihan
+     */
+    protected function runReset(bool $deletePhysicalFiles)
+    {
+        if (!Auth::user()->hasRole('super_admin')) { abort(403); }
 
-                    DB::statement('SET CONSTRAINTS ALL DEFERRED');
-                    $tables = ['pembelajarans', 'anggota__rombels', 'rombels', 'siswas', 'ptks', 'sekolahs', 'files', 'announcements', 'notifications'];
-                    foreach ($tables as $table) { DB::table($table)->truncate(); }
+        
+        DB::transaction(function () use ($deletePhysicalFiles) {
+            $protectedUserIds = Dapodik_User::where('username', 'admin')
+                ->orWhere('id', Auth::id())
+                ->pluck('id')
+                ->toArray();
+            if ($deletePhysicalFiles) {
+                // Hapus File Lokal (Foto)
+                Storage::disk('public')->deleteDirectory('foto-ptk');
+                Storage::disk('public')->deleteDirectory('foto-siswa');
+                Storage::disk('public')->makeDirectory('foto-ptk');
+                Storage::disk('public')->makeDirectory('foto-siswa');
 
-                    Dapodik_User::query()
-                    ->whereDoesntHave('roles', function ($query) {
-                        $query->whereIn('name', ['super_admin', 'admin']);
-                    })
-                    ->where('username', '!=', 'admin') 
-                    ->where('id', '!=', Auth::id())   
-                    ->forceDelete();
-                });
-                Notification::make()->title('Sistem Berhasil Dibersihkan')->danger()->send();
-            });
+                // Hapus File Google Drive
+                GoogleDriveService::applyConfig();
+                $google = Storage::disk('google');
+                foreach (['siswa', 'guru', 'kepsek', 'tenaga kependidikan'] as $folder) {
+                    if ($google->exists($folder)) { $google->deleteDirectory($folder); }
+                }
+            }
+
+            // Truncate Tabel (PostgreSQL)
+            DB::statement('SET CONSTRAINTS ALL DEFERRED');
+             $childTables = ['pembelajarans', 'anggota__rombels', 'notifications'];
+            foreach ($childTables as $table) {
+                DB::table($table)->truncate();
+            }
+            $tables = ['rombels', 'siswas', 'ptks', 'sekolahs', 'files', 'announcements'];
+            foreach ($tables as $table) { DB::table($table)->delete(); }
+
+            // Reset User kecuali admin utama dan user yang sedang login
+            Dapodik_User::query()
+                ->whereNotIn('id', $protectedUserIds)
+                ->whereDoesntHave('roles', fn($q) => $q->whereIn('name', ['super_admin', 'admin']))
+                // ->where('username', '!=', 'admin') 
+                // ->where('id', '!=', Auth::id())   
+                ->forceDelete();
+            // Reset Metadata pada Admin yang tersisa
+            // Pastikan admin tidak lagi terhubung ke ptk_id atau sekolah_id yang sudah dihapus
+            Dapodik_User::whereIn('id', $protectedUserIds)->update([
+                'ptk_id' => null,
+                'peserta_didik_id' => null,
+                'sekolah_id' => null,
+            ]);
+        });
+
+        Notification::make()
+            ->title($deletePhysicalFiles ? 'Pembersihan Total Berhasil' : 'Database Berhasil Dikosongkan')
+            ->success()
+            ->send();
     }
 
     /**
