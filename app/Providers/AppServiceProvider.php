@@ -10,6 +10,7 @@ use Masbug\Flysystem\GoogleDriveAdapter;
 use Google\Client as GoogleClient;
 use Google\Service\Drive as GoogleDrive;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use App\Models\Dapodik_User;
 use Exception;
 
@@ -22,6 +23,12 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        if (app()->environment('production')) {
+            URL::forceScheme('https');
+            // Jika menggunakan proxy seperti Cloudflare
+            // request()->server->set('HTTPS', true); 
+        }
+
         try {
             Storage::extend('google', function ($app, $config) {
                 $client = new GoogleClient();
@@ -30,14 +37,14 @@ class AppServiceProvider extends ServiceProvider
                 $client->refreshToken($config['refreshToken'] ?? '');
 
                 $service = new GoogleDrive($client);
-                
+
                 // Pastikan folderId bersih dari spasi dan tidak null
                 $rootFolderId = !empty($config['folderId']) ? trim($config['folderId']) : 'root';
 
                 // 1. Buat Adapter
                 // Parameter kedua adalah ID folder yang akan dianggap sebagai "/" (root) oleh aplikasi
                 $adapter = new GoogleDriveAdapter($service, $rootFolderId);
-                
+
                 // 2. Buat Operator Flysystem (Standar V3)
                 $operator = new Filesystem($adapter);
 
@@ -50,7 +57,7 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\Log::error("Gagal mendaftarkan Driver Google Drive: " . $e->getMessage());
         }
 
-         Gate::before(function (Dapodik_User $user, $ability) {
+        Gate::before(function (Dapodik_User $user, $ability) {
             return $user->hasRole('super_admin') ? true : null;
         });
     }

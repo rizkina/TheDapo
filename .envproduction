@@ -1,54 +1,53 @@
 APP_NAME="The Dapo"
 APP_ENV=production
-APP_KEY=base64:jKqsFFFLFtINwoD3sVB51bLeFDNZsSVcOk8MPVzgvqo= # Jalankan 'php artisan key:generate' setelah simpan
+APP_KEY=
 APP_DEBUG=false
-APP_URL=http://127.0.0.1:8000
+APP_URL=https://thedapo.sch.id  # WAJIB gunakan domain asli & HTTPS
 
-# Pengaturan Bahasa Indonesia agar format tanggal & angka sesuai
 APP_LOCALE=id
 APP_FALLBACK_LOCALE=id
 APP_FAKER_LOCALE=id_ID
 
-APP_MAINTENANCE_DRIVER=file
-
-BCRYPT_ROUNDS=12
-
+# Log harian agar file log tidak membengkak dalam satu file besar
 LOG_CHANNEL=daily
-LOG_STACK=single
 LOG_LEVEL=error
 
-# KONFIGURASI DATABASE POSTGRESQL
+# DATABASE (Gunakan password kuat!)
 DB_CONNECTION=pgsql
-DB_HOST=127.0.0.1
+DB_HOST=127.0.0.1 # ganti dengan postgreqsl server anda
 DB_PORT=5432
-DB_DATABASE=db_dapo
-DB_USERNAME=postgres
-DB_PASSWORD= # Sesuaikan dengan password postgres Laragon Anda
+DB_DATABASE=db_dapo_prod # ganti dengan nama database anda
+DB_USERNAME=dapo_admin  # ganti dengan user postgresql anda
+DB_PASSWORD=GunakanPasswordYangSangatKuat123! # ganti dengan password anda
 
-# OPTIMASI DENGAN REDIS (Sangat Penting untuk Tarik Data Dapodik)
+# REDIS (Optimasi Sesi & Antrean)
 SESSION_DRIVER=redis
 SESSION_LIFETIME=120
 SESSION_ENCRYPT=true 
-
 CACHE_STORE=redis
 QUEUE_CONNECTION=redis
 
-# REDIS SETTINGS (Gunakan predis agar lebih stabil di Windows)
 REDIS_CLIENT=predis
 REDIS_HOST=127.0.0.1
-REDIS_PASSWORD=null
+REDIS_PASSWORD= # IsiJikaRedisMenggunakanPassword
 REDIS_PORT=6379
 
-# FILESYSTEM
+# FILESYSTEM & PATH BINARY
 FILESYSTEM_DISK=public
+PG_DUMP_PATH="/usr/bin/pg_dump" # Sesuaikan lokasi bin postgres
+PSQL_PATH="/usr/bin/psql"       # Sesuaikan lokasi bin postgres
 
-# EMAIL (Gunakan log saat testing agar tidak butuh SMTP asli)
-MAIL_MAILER=log
-MAIL_FROM_ADDRESS="admin@thedapo.sch.id"
+# EMAIL (Untuk produksi ganti ke SMTP jika ingin kirim email beneran)
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.mailtrap.io
+MAIL_PORT=2525
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_ENCRYPTION=null
+MAIL_FROM_ADDRESS="no-reply@thedapo.sch.id"
 MAIL_FROM_NAME="${APP_NAME}"
 
-# GOOGLE DRIVE CONFIG (Sesuai diskusi sebelumnya)
-# Data ini hanya fallback, karena kita sudah menyimpannya di Database
+# GOOGLE DRIVE (Tersimpan di DB, ini hanya cadangan)
 GOOGLE_DRIVE_FOLDER_ID=
 
 VITE_APP_NAME="${APP_NAME}"
