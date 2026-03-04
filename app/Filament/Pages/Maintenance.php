@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Components\FileUpload;
+use Illuminate\Support\Facades\File;
+use ZipArchive;
 use UnitEnum;
 use BackedEnum;
 
@@ -54,7 +57,7 @@ class Maintenance extends Page
 
                     if (count($files) > 0) {
                         $latestFile = collect($files)
-                            ->sortByDesc(fn ($file) => $disk->lastModified($file))
+                            ->sortByDesc(fn($file) => $disk->lastModified($file))
                             ->first();
 
                         // 1. Tentukan Format Nama Baru
@@ -112,14 +115,129 @@ class Maintenance extends Page
             ->action(fn() => $this->runReset(true));
     }
 
+    public function restoreAction(): Action
+    {
+        return Action::make('restore')
+            ->label('Restore Database')
+            ->icon('heroicon-o-arrow-path')
+            ->color('success')
+            ->requiresConfirmation()
+            ->modalHeading('Pulihkan Database?')
+            ->modalDescription('PERINGATAN: Seluruh data saat ini akan dihapus dan diganti dengan data dari file backup. Pastikan file backup valid.')
+            ->schema([
+                FileUpload::make('backup_file')
+                    ->label('Pilih File Backup (.zip)')
+                    ->acceptedFileTypes([
+                        'application/zip',
+                        'application/x-zip-compressed',
+                        'application/octet-stream',
+                        'application/x-compress',
+                        'application/x-compressed',
+                        'multipart/x-zip',
+                    ])
+                    ->disk('local')
+                    ->directory('temp-restores')
+                    ->required()
+                    ->maxSize(102400),
+            ])
+            ->action(function (array $data) {
+                try {
+                    $disk = Storage::disk('local');
+                    $zipFilePath = $disk->path($data['backup_file']);
+                    $extractPath = storage_path('app/temp-restores');
+
+                    // Pastikan folder bersih
+                    if (File::exists($extractPath)) {
+                        File::deleteDirectory($extractPath);
+                    }
+                    File::makeDirectory($extractPath, 0755, true);
+
+                    // Ekstraksi
+                    $zip = new \ZipArchive;
+                    if ($zip->open($zipFilePath) !== TRUE) throw new \Exception("Gagal membuka ZIP.");
+                    $zip->extractTo($extractPath);
+                    $zip->close();
+
+                    // Cari SQL
+                    $sqlFile = collect(File::allFiles($extractPath))->first(fn($f) => $f->getExtension() === 'sql');
+                    if (!$sqlFile) throw new \Exception("File SQL tidak ditemukan.");
+
+                    // DB Config
+                    $db = config('database.connections.pgsql');
+                    putenv("PGPASSWORD=" . $db['password']);
+
+                    // Ambil binary psql secara dinamis
+                    $psql = $this->getPsqlPath('psql');
+
+                    // Eksekusi Command (Universal dengan escapeshellarg)
+                    $command = sprintf(
+                        '%s -h %s -p %s -U %s -d %s -f %s',
+                        escapeshellarg($psql),
+                        escapeshellarg($db['host']),
+                        escapeshellarg($db['port']),
+                        escapeshellarg($db['username']),
+                        escapeshellarg($db['database']),
+                        escapeshellarg($sqlFile->getRealPath())
+                    );
+
+                    [$output, $resultCode] = $this->executeBinaryCommand($command);
+
+                    // Bersihkan
+                    File::deleteDirectory($extractPath);
+                    $disk->delete($data['backup_file']);
+
+                    if ($resultCode !== 0) throw new \Exception("Database Error: " . implode(" ", $output));
+
+                    Notification::make()->title('Database Berhasil Dipulihkan')->success()->send();
+                } catch (\Exception $e) {
+                    Notification::make()->title('Restore Gagal')->body($e->getMessage())->danger()->persistent()->send();
+                }
+            })
+            ->disabled(!$this->isPsqlAvailable())
+            ->tooltip(!$this->isPsqlAvailable() ? 'psql tidak ditemukan' : null);
+    }
+
+    public function isPsqlAvailable(): bool
+    {
+        $psqlPath = env('PSQL_PATH', 'psql');
+
+        // Perintah cek versi (berlaku di Windows & Linux)
+        $command = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN')
+            ? "\"$psqlPath\" --version"
+            : "which $psqlPath";
+
+        exec($command, $output, $resultCode);
+
+        return $resultCode === 0;
+    }
+
+    private function getPsqlPath($binary = 'psql'): string
+    {
+        // 1. Cek apakah ada path manual di .env (untuk Windows/Laragon)
+        $envPath = ($binary === 'psql') ? env('PSQL_PATH') : env('PG_DUMP_PATH');
+        if ($envPath) return $envPath;
+
+        // 2. Jika di Linux/Docker, cukup panggil namanya langsung
+        return $binary;
+    }
+
+    private function executeBinaryCommand($command): array
+    {
+        // Tambahkan 2>&1 agar error dari terminal tertangkap oleh PHP
+        exec($command . ' 2>&1', $output, $resultCode);
+        return [$output, $resultCode];
+    }
+
     /**
      * Logic Inti Pembersihan
      */
     protected function runReset(bool $deletePhysicalFiles)
     {
-        if (!Auth::user()->hasRole('super_admin')) { abort(403); }
+        if (!Auth::user()->hasRole('super_admin')) {
+            abort(403);
+        }
 
-        
+
         DB::transaction(function () use ($deletePhysicalFiles) {
             $protectedUserIds = Dapodik_User::where('username', 'admin')
                 ->orWhere('id', Auth::id())
@@ -136,18 +254,22 @@ class Maintenance extends Page
                 GoogleDriveService::applyConfig();
                 $google = Storage::disk('google');
                 foreach (['siswa', 'guru', 'kepsek', 'tenaga kependidikan'] as $folder) {
-                    if ($google->exists($folder)) { $google->deleteDirectory($folder); }
+                    if ($google->exists($folder)) {
+                        $google->deleteDirectory($folder);
+                    }
                 }
             }
 
             // Truncate Tabel (PostgreSQL)
             DB::statement('SET CONSTRAINTS ALL DEFERRED');
-             $childTables = ['pembelajarans', 'anggota__rombels', 'notifications'];
+            $childTables = ['pembelajarans', 'anggota__rombels', 'notifications'];
             foreach ($childTables as $table) {
                 DB::table($table)->truncate();
             }
             $tables = ['rombels', 'siswas', 'ptks', 'sekolahs', 'files', 'announcements'];
-            foreach ($tables as $table) { DB::table($table)->delete(); }
+            foreach ($tables as $table) {
+                DB::table($table)->delete();
+            }
 
             // Reset User kecuali admin utama dan user yang sedang login
             Dapodik_User::query()
@@ -180,14 +302,24 @@ class Maintenance extends Page
         $dapoConfig = \App\Models\DapodikConf::where('is_active', true)->first();
         $dapo = $dapoConfig ? (new DapodikService())->testConnection($dapoConfig->base_url, $dapoConfig->token, $dapoConfig->npsn) : ['success' => false, 'message' => 'Belum dikonfigurasi'];
 
+        // Ambil info backup terakhir
+        $disk = Storage::disk('local');
+        $appName = config('app.name');
+        $files = $disk->exists($appName) ? $disk->allFiles($appName) : [];
+        $lastBackupDate = count($files) > 0
+            ? date('d M Y H:i', $disk->lastModified(collect($files)->last()))
+            : 'Belum ada';
+
         return [
             'driveStatus' => $drive,
             'dapoStatus' => $dapo,
+            'isPsqlReady' => $this->isPsqlAvailable(),
+            'lastBackup' => $lastBackupDate,
             'stats' => [
                 'siswa' => \App\Models\Siswa::count(),
                 'ptk' => \App\Models\Ptk::count(),
                 'file' => \App\Models\File::count(),
-                'rombel' => \APP\Models\Rombel::count(),
+                'rombel' => \App\Models\Rombel::count(),
             ]
         ];
     }
