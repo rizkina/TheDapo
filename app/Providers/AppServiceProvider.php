@@ -23,11 +23,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        if (app()->environment('production')) {
-            URL::forceScheme('https');
-            // Jika menggunakan proxy seperti Cloudflare
-            // request()->server->set('HTTPS', true); 
-        }
+        // if (app()->environment('production')) {
+        //     URL::forceScheme('https');
+        //     // Jika menggunakan proxy seperti Cloudflare
+        //     // request()->server->set('HTTPS', true); 
+        // }
 
         try {
             Storage::extend('google', function ($app, $config) {

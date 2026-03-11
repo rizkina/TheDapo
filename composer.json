@@ -80,7 +80,10 @@
     "extra": {
         "laravel": {
             "dont-discover": []
-        }
+        },
+        "google/apiclient-services": [
+            "Drive"
+        ]
     },
     "config": {
         "optimize-autoloader": true,
