@@ -1,0 +1,531 @@
+<?php
+
+namespace App\Filament\Resources\Siswas;
+
+use App\Filament\Resources\Siswas\Pages\CreateSiswa;
+use App\Filament\Resources\Siswas\Pages\EditSiswa;
+use App\Filament\Resources\Siswas\Pages\ListSiswas;
+use App\Filament\Resources\Siswas\Pages\ViewSiswa;
+use App\Filament\Resources\Siswas\Schemas\SiswaForm;
+use App\Filament\Resources\Siswas\Schemas\SiswaInfolist;
+use App\Filament\Resources\Siswas\Tables\SiswasTable;
+use App\Models\Siswa;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use App\Exports\SiswaExport;
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
+// use Illuminate\Support\Facades\Blade;
+use Filament\Actions\Action;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
+use Filament\Tables;
+use Filament\Forms\Components\FileUpload;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Infolists\Components\ImageEntry;
+use Filament\Infolists\Components\TextEntry;
+
+class SiswaResource extends Resource
+{
+    protected static ?string $model = Siswa::class;
+
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::UserGroup;
+
+    protected static ?string $pluralModelLabel = 'Siswa';
+
+    protected static ?string $recordTitleAttribute = 'nama';
+    protected static ?int $navigationSort = 3;
+
+    // 
+    
+    public static function form(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Section::make('Pas Foto')
+                    ->schema([
+                        FileUpload::make('foto')
+                            ->label('Foto Profil')
+                            ->image() // Pastikan hanya gambar
+                            ->avatar() // Membuat bentuk lingkaran (khusus foto profil)
+                            ->imageEditor() // Memungkinkan admin melakukan crop/resize
+                            ->circleCropper()
+                            ->directory('foto-siswa') // Tersimpan di storage/app/public/foto-siswa
+                            ->disk('public') // Gunakan disk lokal
+                            ->maxSize(1024), // Batasi 1MB agar server tetap ringan
+                    ])->columnSpan(1),
+                // SEKSI 1: IDENTITAS (READ ONLY)
+                Section::make('Identitas Utama (Dapodik)')
+                    ->description('Data ini dikunci dan hanya bisa diperbarui melalui Sinkronisasi Dapodik.')
+                    ->schema([
+                        TextInput::make('nama')->disabled(),
+                        TextInput::make('nisn')->disabled(),
+                        TextInput::make('nipd')->label('NIS')->disabled(),
+                        TextInput::make('nik')->disabled(),
+                        TextInput::make('tempat_lahir')->disabled(),
+                        DatePicker::make('tanggal_lahir')->disabled(),
+                        TextInput::make('nama_rombel')->label('Kelas Saat Ini')->disabled(),
+                    ])->columns(2),
+
+                // SEKSI 2: DATA YANG BOLEH DIEDIT
+                Section::make('Data Pelengkap Siswa')
+                    ->description('Data di bawah ini diperbolehkan untuk diperbarui secara lokal.')
+                    ->schema([
+                        // Agama (Editable)
+                        Select::make('agama_id')
+                            ->label('Agama')
+                            ->relationship('agama', 'nama')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                        TextInput::make('nomor_telepon_seluler')
+                            ->label('No. Telepon Seluler')
+                            ->tel(),
+                        TextInput::make('nomor_telepon_rumah')
+                            ->label('No. Telepon Rumah')
+                            ->tel(),
+                        TextInput::make('email')
+                            ->label('Email')
+                            ->email(),
+                        TextInput::make('anak_keberapa')
+                            ->label('Anak Ke-')
+                            ->numeric(),
+                        TextInput::make('tinggi_badan')
+                            ->label('Tinggi Badan (cm)')
+                            ->numeric(),
+                        TextInput::make('berat_badan')
+                            ->label('Berat Badan (kg)')
+                            ->numeric(),
+                        TextInput::make('kebutuhan_khusus')
+                            ->label('Kebutuhan Khusus')
+                            ->helperText('Isi jika berkebutuhan khusus, kosongkan jika tidak.'),
+                    
+                        
+                    ])->columns(2),
+                Section::make('Data Orang Tua')
+                    ->description('Data tambahan yang dapat diisi sesuai kebutuhan.')
+                    ->schema([
+                        // Data Orang Tua (Editable)
+                        TextInput::make('nama_ayah')->disabled(),
+                        TextInput::make('nik_ayah')
+                            ->label('NIK Ayah')
+                            ->mask('9999999999999999') // Memaksa input 16 digit angka (UX sangat bagus)
+                            ->length(16)               // Memastikan panjang tepat 16
+                            ->rules(['digits:16']),     // Validasi Laravel agar harus 16 digit angka
+                        TextInput::make('tahun_lahir_ayah')
+                            ->label('Tahun Lahir Ayah')
+                            ->numeric()
+                            ->length(4),
+                        Select::make('pekerjaan_ayah_id')
+                            ->relationship('pekerjaanAyah', 'nama')
+                            ->searchable()
+                            ->preload(),
+                        Select::make('pendidikan_ayah_id')
+                            ->relationship('pendidikanAyah', 'nama')
+                            ->searchable()
+                            ->preload(),
+                        Select::make('penghasilan_ayah_id')
+                            ->label('Penghasilan Ayah')
+                            ->relationship('penghasilanAyah', 'nama')
+                            ->searchable()
+                            ->preload(),
+
+                        TextInput::make('nama_ibu')->disabled(),
+                        TextInput::make('nik_ibu')
+                            ->label('NIK Ibu')
+                            ->mask('9999999999999999')
+                            ->length(16)
+                            ->rules(['digits:16']),
+                        TextInput::make('tahun_lahir_ibu')
+                            ->label('Tahun Lahir Ibu')
+                            ->numeric()
+                            ->length(4),
+                        Select::make('pekerjaan_ibu_id')
+                            ->relationship('pekerjaanIbu', 'nama')
+                            ->searchable()
+                            ->preload(),
+                        Select::make('pendidikan_ibu_id')
+                            ->relationship('pendidikanIbu', 'nama')
+                            ->searchable()
+                            ->preload(),
+                        Select::make('penghasilan_ibu_id')
+                            ->label('Penghasilan Ibu')
+                            ->relationship('penghasilanIbu', 'nama')
+                            ->searchable()
+                            ->preload(),
+                    ])->columns(2),
+                Section::make('Data Wali')
+                    ->description('Diisi jika siswa memiliki wali atau tinggal dengan selain Ayah/Ibu.')
+                    ->schema([
+                        TextInput::make('nama_wali')->disabled(),
+                        TextInput::make('nik_wali')
+                            ->label('NIK Wali')
+                            ->mask('9999999999999999')
+                            ->length(16)
+                            ->rules(['digits:16']),
+                        TextInput::make('tahun_lahir_wali')
+                            ->label('Tahun Lahir Wali')
+                            ->numeric()
+                            ->length(4),
+                        Select::make('pekerjaan_wali_id')
+                            ->relationship('pekerjaanWali', 'nama')
+                            ->searchable()
+                            ->preload(),
+                        Select::make('pendidikan_wali_id')
+                            ->relationship('pendidikanWali', 'nama')
+                            ->searchable()
+                            ->preload(),
+                        Select::make('penghasilan_wali_id')
+                            ->label('Penghasilan Wali')
+                            ->relationship('penghasilanWali', 'nama')
+                            ->searchable()
+                            ->preload(),
+                    ])
+                    ->collapsed()
+                    ])->columns(2);
+            // ]);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        // return SiswaInfolist::configure($schema);
+        return $schema
+        ->schema([
+            Section::make('Foto Profil')
+                ->schema([
+                    ImageEntry::make('foto')
+                        ->label('')
+                        ->circular()
+                        ->disk('public')
+                        ->height(150),
+                ])->columnSpan(1),
+            
+            Section::make('Identitas Utama (Dapodik)')
+                ->description('Data ini dikunci dan hanya bisa diperbarui melalui Sinkronisasi Dapodik.')
+                ->schema([
+                    TextEntry::make('nama'),
+                    TextEntry::make('nisn'),
+                    TextEntry::make('nipd')->label('NIS'),
+                    TextEntry::make('nik')->label('NIK'),
+                    TextEntry::make('tempat_lahir'),
+                    TextEntry::make('tanggal_lahir')->date('d F Y'),
+                    TextEntry::make('nama_rombel')->label('Kelas Saat Ini'),
+                ])->columns(2),
+            
+            Section::make('Data Pelengkap Siswa')
+                    ->description('Data di bawah ini diperbolehkan untuk diperbarui secara lokal.')
+                    ->schema([
+                        // Agama (Editable)
+                        TextEntry::make('agama.nama')
+                            ->label('Agama'),
+                        TextEntry::make('nomor_telepon_seluler')
+                            ->label('No. Telepon Seluler'),
+                        TextEntry::make('nomor_telepon_rumah')
+                            ->label('No. Telepon Rumah'),
+                        TextEntry::make('email')
+                            ->label('Email'),
+                        TextEntry::make('anak_keberapa')
+                            ->label('Anak Ke-'),
+                        TextEntry::make('tinggi_badan')
+                            ->label('Tinggi Badan (cm)'),
+                        TextEntry::make('berat_badan')
+                            ->label('Berat Badan (kg)'),
+                        TextEntry::make('kebutuhan_khusus')
+                            ->label('Kebutuhan Khusus'),                        
+                    ])->columns(2),
+
+                Section::make('Data Orang Tua')
+                    ->description('Data tambahan yang dapat diisi sesuai kebutuhan.')
+                    ->schema([
+                        // Data Orang Tua (Editable)
+                        TextEntry::make('nama_ayah'),
+                        TextEntry::make('nik_ayah')
+                            ->label('NIK Ayah'),
+                        TextEntry::make('tahun_lahir_ayah')
+                            ->label('Tahun Lahir Ayah'),
+                        TextEntry::make('pekerjaanAyah.nama')
+                            ->label('Pekerjaan Ayah'),
+                        TextEntry::make('pendidikanAyah.nama')
+                            ->label('Pendidikan Ayah'),
+                           
+                        TextEntry::make('penghasilanAyah.nama')
+                            ->label('Penghasilan Ayah'),
+                            
+                        TextEntry::make('nama_ibu'),
+                        TextEntry::make('nik_ibu')
+                            ->label('NIK Ibu'),
+                        TextEntry::make('tahun_lahir_ibu')
+                            ->label('Tahun Lahir Ibu'),
+                        TextEntry::make('pekerjaanIbu.nama')
+                            ->label('Pekerjaan Ibu'),
+                        TextEntry::make('pendidikanIbu.nama')
+                            ->label('Pendidikan Ibu'),
+                        TextEntry::make('penghasilanIbu.nama')
+                            ->label('Penghasilan Ibu'),
+                    ])->columns(2),
+                Section::make('Data Wali')
+                    ->description('Diisi jika siswa memiliki wali atau tinggal dengan selain Ayah/Ibu.')
+                    ->schema([
+                        TextEntry::make('nama_wali'),
+                        TextEntry::make('nik_wali')
+                            ->label('NIK Wali'),
+                        TextEntry::make('tahun_lahir_wali')
+                            ->label('Tahun Lahir Wali'),
+                        TextEntry::make('pekerjaanWali.nama')
+                            ->label('Pekerjaan Wali'),
+                        TextEntry::make('pendidikanWali.nama')
+                            ->label('Pendidikan Wali'),
+                        TextEntry::make('penghasilanWali.nama')
+                            ->label('Penghasilan Wali'),
+                    ])
+                    ->collapsed()
+        ])->columns(2);
+    }
+
+    // public static function table(Table $table): Table
+    // {
+    //     return SiswasTable::configure($table);
+    // }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                ImageColumn::make('foto')
+                    ->label('')
+                    ->circular() // Bentuk lingkaran
+                    ->defaultImageUrl(url('/images/avatar.png')),
+                    
+                TextColumn::make('nisn')
+                    ->label('NISN')
+                    ->copyable()
+                    ->searchable(),
+                    
+                TextColumn::make('nipd')
+                    ->label('NIS')
+                    ->searchable(),
+
+                TextColumn::make('nama')
+                    ->label('Nama Siswa')
+                    ->searchable()
+                    ->sortable(),
+
+                TextColumn::make('tempat_lahir')
+                    ->label('Tempat Lahir'),
+
+                TextColumn::make('tanggal_lahir')
+                    ->label('Tgl Lahir')
+                    ->sortable()
+                    ->date('d/m/Y'),
+
+                TextColumn::make('nama_rombel')
+                    ->label('Kelas')
+                    ->sortable()
+                    ->searchable()
+                    ->badge()
+                    ->color('info'),
+
+                // Data lain disembunyikan secara default
+                TextColumn::make('nik')
+                    ->label('NIK')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('nama_ibu')
+                    ->label('Nama Ibu')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('deleted_at')
+                    ->label('Status')
+                    ->placeholder('Aktif')
+                    ->dateTime('d M Y')
+                    ->since() // Menampilkan "2 days ago" agar lebih manusiawi
+                    ->color('danger')
+                    ->visible(fn ($livewire) => $livewire->activeTab === 'keluar'), // Hanya muncul di tab 'keluar'
+            ])
+            ->headerActions([
+                Action::make('export excel')
+                    ->label('Excel')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->action(function ($livewire) {
+                        $records = $livewire->getFilteredTableQuery()->get();
+
+                        if ($records->isEmpty()) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Gagal')
+                                ->body('Tidak ada data untuk diunduh.')
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+                        $namaFile = 'Siswa_' . now()->format('dmY_His') . '.xlsx';
+                        return Excel::download(new SiswaExport($records), $namaFile);
+                    })
+            ])
+            ->bulkActions([
+                BulkActionGroup::make([
+                    BulkAction::make('export selected excel')
+                        ->label('Excel (Terpilih)')
+                        ->icon('heroicon-o-document-text')
+                        ->color('success')
+                        ->action(fn ($records) => Excel::download(new SiswaExport($records), 'siswa-pilihan.xlsx')),
+
+                    // Ekspor PDF yang dicentang
+                    BulkAction::make('exportSelectedPdf')
+                        ->label('PDF (Terpilih)')
+                        ->icon('heroicon-o-document-text')
+                        ->color('primary')
+                        ->action(function ($records) {
+                            $pdf = Pdf::loadView('pdf.siswa', ['siswas' => $records])
+                                ->setPaper('a4', 'landscape');
+
+                            return response()->streamDownload(
+                                fn () => print($pdf->output()),
+                                'siswa-pilihan.pdf'
+                            );
+                        }),
+                ])
+            ])
+            ->filters([
+                Tables\Filters\TrashedFilter::make(),
+
+            Tables\Filters\SelectFilter::make('nama_rombel')
+                ->label('Kelas')
+                ->options(function () {
+                    return Siswa::query()
+                        ->whereNotNull('nama_rombel')
+                        ->distinct()
+                        ->orderBy('nama_rombel', 'asc')
+                        ->pluck('nama_rombel', 'nama_rombel')
+                        ->toArray();
+                })
+                ->searchable()
+                ->preload(),
+            ])
+
+            ->actions([
+                ActionGroup::make([
+                    ViewAction::make(), // Untuk melihat Detail
+                    EditAction::make(), // Untuk mengedit data tertentu
+                ])
+            ]);
+            
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            //
+        ];
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getEloquentQuery()->count();
+    }
+
+    // Opsional: Memberi warna pada badge
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return static::getModel()::count() > 0 ? 'success' : 'gray';
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => ListSiswas::route('/'),
+            // 'create' => CreateSiswa::route('/create'),
+            'view' => ViewSiswa::route('/{record}'),
+            'edit' => EditSiswa::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        /** @var \App\Models\Dapodik_User $user */
+        $user = Auth::user();
+
+        $query = parent::getEloquentQuery()
+        ->with([
+            'rombels', 
+            'sekolah', 
+            'agama',
+            'pekerjaanAyah', 'pekerjaanIbu', 'pekerjaanWali',
+            'pendidikanAyah', 'pendidikanIbu', 'pendidikanWali',
+            'penghasilanAyah', 'penghasilanIbu', 'penghasilanWali',
+        ]) 
+        ->withoutGlobalScopes([
+            SoftDeletingScope::class,
+        ]);
+
+
+            // 2. Proteksi: Jika user belum login, jangan tampilkan apa-apa
+            if (!$user) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            // 3. Role: Super Admin, Admin, atau Operator (Lihat SEMUA data)
+            if ($user->hasAnyRole(['super_admin', 'admin', 'operator', 'kepsek'])) {
+                return $query;
+            }
+
+            // 4. Role: Guru / GTK (Hanya lihat siswa di kelas binaannya / Wali Kelas)
+            if ($user->hasRole('guru')) {
+                if (!$user->ptk_id) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->whereHas('rombels', function (Builder $q) use ($user) {
+                    // Mencari rombel yang ptk_id-nya adalah ID Guru yang sedang login
+                    $q->where('ptk_id', $user->ptk_id);
+                });
+            }
+
+            // 5. Role: Siswa (Hanya lihat datanya sendiri)
+            if ($user->hasRole('siswa')) {
+                 if (!$user->peserta_didik_id) {
+                    return $query->whereRaw('1 = 0');
+                }
+                return $query->where('id', $user->peserta_didik_id);
+            }
+
+            // 6. Default: Jika user punya role lain yang tidak terdaftar, sembunyikan semua data (Safety First)
+            return $query->whereRaw('1 = 0');
+    }
+
+    public static function getRecordRouteBindingEloquentQuery(): Builder
+    {
+        return parent::getRecordRouteBindingEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
+    }
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
+    }
+}
